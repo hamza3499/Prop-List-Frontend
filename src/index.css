@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #ff2b2b;
+  --primary-container: #e7131d;
+  --surface: #ffffff;
+  --on-surface: #0f171c;
+  --surface-container-low: #f3f4f6;
+  --surface-container-high: #e5e7eb;
+}
+
+.dark {
+  --surface: #0a0a0a;
+  --on-surface: #f9f9f9;
+  --surface-container-low: #171717;
+  --surface-container-high: #262626;
+  --surface-container-lowest: #000000;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-on-surface font-body transition-colors duration-500 overflow-x-hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/70 dark:bg-black/60 backdrop-blur-md;
+  }
+
+  .premium-shadow {
+    box-shadow: 0 20px 40px rgba(26, 28, 28, 0.06);
+  }
+
+  .glass-card {
+    @apply rounded-[24px] premium-shadow transition-all duration-500 overflow-hidden;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .dark .glass-card {
+    box-shadow: 0 10px 40px -15px rgba(0, 0, 0, 0.5);
+  }
+
+  .input-gradient-border {
+    @apply relative after:content-[''] after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-gradient-to-r after:from-transparent after:via-primary after:to-transparent after:scale-x-0 after:transition-transform after:duration-500 focus-within:after:scale-x-100;
+  }
+
+  .gpu-accelerated {
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+
+  .grain-overlay {
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background-image: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+    opacity: 0.05;
+    pointer-events: none;
+    z-index: 9999;
+    /* Animation removed for performance optimization */
+  }
+
+
+}
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-surface;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-surface-container-high rounded-full hover:bg-primary/20 transition-colors;
+}
+
+/* Smooth Scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Page Transition Styles */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 500ms, transform 500ms;
+}
