@@ -270,10 +270,10 @@ const Home = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const responseData = await getProperties({ ...apiFilters, page: currentPage, limit: 6 });
+        const responseData = await getProperties({ ...apiFilters, page: currentPage, limit: 3 });
         const data = responseData.properties || (Array.isArray(responseData) ? responseData : []);
         const totalCount = responseData.total || data.length;
-        const pagesCount = responseData.pages || Math.ceil(totalCount / 6) || 1;
+        const pagesCount = responseData.pages || Math.ceil(totalCount / 3) || 1;
         const formatted = data.map(p => ({
           ...p,
           location: p.city || p.location || 'Location missing',
@@ -531,7 +531,7 @@ const Home = () => {
         {/* Grid */}
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map(i => <PropertySkeleton key={i} />)}
+            {[1, 2, 3].map(i => <PropertySkeleton key={i} />)}
           </div>
         ) : properties.length > 0 ? (
           <>

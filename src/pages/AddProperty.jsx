@@ -9,7 +9,7 @@ import {
   Tag, Compass, Phone, MessageCircle, Map, Layers, Building, Key,
   Loader2, BadgeCent, Check, CloudLightning, Save, ChevronDown, Ruler
 } from 'lucide-react';
-import { addProperty, getToken, getUserProfile } from '../services/api';
+import { addProperty, getToken, getUserProfile, getMyProperties } from '../services/api';
 import GlowButton from '../components/GlowButton';
 
 /* ─── Custom Zap ─────────────────────────────────────────────── */
@@ -354,6 +354,10 @@ const AddProperty = () => {
     title: '', price: '', purpose: '', propertyType: '', description: '',
     city: '', areaSociety: '',
     size: '', sizeUnit: '', beds: '', baths: '', condition: '', age: '',
+    // Category Specific
+    floors: '', floorNumber: '', buildingName: '', isElevatorAvailable: 'No',
+    plotType: 'Residential', isCornerPlot: 'No', facing: '', roadWidth: '',
+    possessionStatus: 'Pending', furnished: 'No', washrooms: '', parking: '',
     amenities: [], features: [],
     phoneNumber: '', whatsappNumber: '',
   });
@@ -369,18 +373,34 @@ const AddProperty = () => {
 
   const [isVerified, setIsVerified] = useState(null);
   const [verStatus, setVerStatus] = useState('');
+  const [propertyCount, setPropertyCount] = useState(0);
 
   useEffect(() => {
     const check = async () => {
       const token = getToken();
       if (!token) { navigate('/login'); return; }
       try {
-        const profile = await getUserProfile(token);
+        const [profile, props] = await Promise.all([
+          getUserProfile(token),
+          getMyProperties(token)
+        ]);
+        
         if (profile) {
           setVerStatus(profile.verificationStatus || 'unverified');
           setIsVerified(profile.verificationStatus === 'verified');
-        } else { setIsVerified(false); setVerStatus('unverified'); }
-      } catch { setIsVerified(false); setVerStatus('unverified'); }
+        } else { 
+          setIsVerified(false); 
+          setVerStatus('unverified'); 
+        }
+
+        if (Array.isArray(props)) {
+          setPropertyCount(props.length);
+        }
+      } catch (err) { 
+        console.error("Auth check error:", err);
+        setIsVerified(false); 
+        setVerStatus('unverified'); 
+      }
     };
     check();
   }, [navigate]);
@@ -441,10 +461,24 @@ const AddProperty = () => {
     } else if (s === 3) {
       if (!formData.size || Number(formData.size) <= 0) e.size = 'Size is required';
       if (!formData.sizeUnit) e.sizeUnit = 'Unit required';
-      if (!formData.beds) e.beds = 'Beds required';
-      if (!formData.baths) e.baths = 'Baths required';
-      if (!formData.condition) e.condition = 'Condition required';
-      if (!formData.age) e.age = 'Age required';
+      
+      const isPlot = formData.propertyType === 'Plot / Land';
+      const isComm = formData.propertyType === 'Commercial';
+      const isRes = !isPlot && !isComm;
+
+      if (isRes) {
+        if (!formData.beds) e.beds = 'Beds required';
+        if (!formData.baths) e.baths = 'Baths required';
+        if (!formData.condition) e.condition = 'Condition required';
+        if (!formData.age) e.age = 'Age required';
+      }
+      if (isPlot) {
+        if (!formData.possessionStatus) e.possessionStatus = 'Possession status required';
+        if (!formData.plotType) e.plotType = 'Plot type required';
+      }
+      if (isComm) {
+        if (!formData.washrooms) e.washrooms = 'Washrooms required';
+      }
     } else if (s === 6) {
       if (!formData.phoneNumber) e.phoneNumber = 'Phone number is required';
       else if (!/^03\d{9}$/.test(formData.phoneNumber)) e.phoneNumber = 'Enter a valid 11-digit Pakistani number';
@@ -501,6 +535,21 @@ const AddProperty = () => {
       fd.append('propertyAge', formData.age);
       fd.append('phoneNumber', formData.phoneNumber);
       if (formData.whatsappNumber) fd.append('whatsappNumber', formData.whatsappNumber);
+      
+      // Dynamic fields
+      if (formData.floors) fd.append('floors', formData.floors);
+      if (formData.floorNumber) fd.append('floorNumber', formData.floorNumber);
+      if (formData.buildingName) fd.append('buildingName', formData.buildingName);
+      if (formData.isElevatorAvailable) fd.append('isElevatorAvailable', formData.isElevatorAvailable);
+      if (formData.plotType) fd.append('plotType', formData.plotType);
+      if (formData.isCornerPlot) fd.append('isCornerPlot', formData.isCornerPlot);
+      if (formData.facing) fd.append('facing', formData.facing);
+      if (formData.roadWidth) fd.append('roadWidth', formData.roadWidth);
+      if (formData.possessionStatus) fd.append('possessionStatus', formData.possessionStatus);
+      if (formData.furnished) fd.append('furnished', formData.furnished);
+      if (formData.washrooms) fd.append('washrooms', formData.washrooms);
+      if (formData.parking) fd.append('parking', formData.parking);
+
       formData.amenities.forEach(a => fd.append('amenities', a));
       formData.features.forEach(f => fd.append('featureTags', f));
       images.forEach(img => fd.append('images', img.file));
@@ -647,6 +696,30 @@ const AddProperty = () => {
           <div className="absolute top-0 left-12 right-12 h-[3px] rounded-b-full"
             style={{ background: 'linear-gradient(90deg, transparent, #C8102E, #FF3355, #C8102E, transparent)' }} />
 
+          {/* ─── LIMIT REACHED ALERT ─── */}
+          {propertyCount >= 3 && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8 p-6 rounded-[24px] flex flex-col md:flex-row items-center gap-6 text-center md:text-left"
+              style={{ background: 'linear-gradient(135deg, #FFF0F3, #FFE4E9)', border: '1.5px solid #FFD6DE', boxShadow: '0 12px 32px -8px rgba(200,16,46,0.1)' }}
+            >
+              <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center shrink-0 shadow-sm">
+                <BadgeCent size={28} className="text-[#C8102E]" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-black text-gray-900 tracking-tight">Listing Limit Reached</h3>
+                <p className="text-sm text-gray-500 font-semibold mt-1">You have reached your limit of 3 properties. Upgrade your plan to post more.</p>
+              </div>
+              <button 
+                onClick={() => window.location.href = '/subscription'}
+                className="px-6 py-3 rounded-xl bg-[#C8102E] text-white font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-red-500/25"
+              >
+                Upgrade Plan
+              </button>
+            </motion.div>
+          )}
+
           <div className="flex-1 relative">
             <AnimatePresence custom={dir} mode="wait">
 
@@ -665,7 +738,7 @@ const AddProperty = () => {
                       <PremiumSelect label="Property Type" id="propertyType" value={formData.propertyType} onChange={update('propertyType')} options={[
                         { label: 'House', value: 'House', icon: Home },
                         { label: 'Apartment', value: 'Apartment', icon: Layers },
-                        { label: 'Plot / Land', value: 'Plot', icon: Map },
+                        { label: 'Plot / Land', value: 'Plot / Land', icon: Map },
                         { label: 'Commercial', value: 'Commercial', icon: Building },
                       ]} error={errors.propertyType} icon={Building} />
                     </div>
@@ -691,27 +764,77 @@ const AddProperty = () => {
               {step === 3 && (
                 <motion.div key="s3" custom={dir} variants={slideVariants} initial="enter" animate="center" exit="exit" className="space-y-8">
                   <StepHeader icon={Ruler} title="Physical Dimensions" sub="Specify architectural metrics and conditioning." />
-                  <div className="space-y-5">
+                  <div className="space-y-6">
+                    {/* Common Field: Size */}
                     <div className="grid grid-cols-2 gap-5">
-                      <PremiumInput label="Area Size" id="size" type="number" value={formData.size} onChange={update('size')} error={errors.size} placeholder="e.g. 10" icon={Move} />
+                      <PremiumInput label="Area Size" id="size" type="number" value={formData.size} onChange={update('size')} error={errors.size} placeholder="e.g. 10" icon={Ruler} />
                       <PremiumSelect label="Unit" id="sizeUnit" value={formData.sizeUnit} onChange={update('sizeUnit')} options={['Marla', 'Kanal', 'Sqft', 'Square Yards']} error={errors.sizeUnit} icon={MapPin} />
                     </div>
-                    <div className="grid grid-cols-2 gap-5">
-                      <PremiumSelect label="Bedrooms" id="beds" value={formData.beds} onChange={update('beds')} error={errors.beds} options={['Studio', '1', '2', '3', '4', '5', '6', '7+']} icon={Bed} />
-                      <PremiumSelect label="Bathrooms" id="baths" value={formData.baths} onChange={update('baths')} error={errors.baths} options={['0', '1', '2', '3', '4', '5', '6', '7+']} icon={Bath} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-5">
-                      <PremiumSelect label="Condition" id="condition" value={formData.condition} onChange={update('condition')} options={[
-                        { label: 'Brand New', value: 'Brand New', icon: Sparkles },
-                        { label: 'Excellent', value: 'Excellent', icon: Shield },
-                        { label: 'Needs Work', value: 'Needs Work', icon: AlertCircle },
-                      ]} error={errors.condition} icon={CheckCircle} />
-                      <PremiumSelect label="Age" id="age" value={formData.age} onChange={update('age')} options={[
-                        { label: 'Newly Built', value: 'Newly Built', icon: Sparkles },
-                        { label: '1–3 Years', value: '1-3 Years', icon: Layers },
-                        { label: '10+ Years', value: '10+ Years', icon: Building },
-                      ]} error={errors.age} icon={Layers} />
-                    </div>
+
+                    {/* DYNAMIC FIELDS: HOUSE / APARTMENT */}
+                    {(formData.propertyType === 'House' || formData.propertyType === 'Apartment') && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-6">
+                        <div className="grid grid-cols-2 gap-5">
+                          <PremiumSelect label="Bedrooms" id="beds" value={formData.beds} onChange={update('beds')} error={errors.beds} options={['Studio', '1', '2', '3', '4', '5', '6', '7+']} icon={Bed} />
+                          <PremiumSelect label="Bathrooms" id="baths" value={formData.baths} onChange={update('baths')} error={errors.baths} options={['0', '1', '2', '3', '4', '5', '6', '7+']} icon={Bath} />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-5">
+                          <PremiumSelect label="Furnished" id="furnished" value={formData.furnished} onChange={update('furnished')} options={['No', 'Yes']} icon={Check} />
+                          <PremiumSelect label="Newly Built" id="age" value={formData.age} onChange={update('age')} options={[
+                            { label: 'Brand New', value: 'Newly Built', icon: Sparkles },
+                            { label: '1–5 Years', value: 'Old', icon: Layers },
+                          ]} error={errors.age} icon={Sparkles} />
+                        </div>
+
+                        {formData.propertyType === 'House' && (
+                          <div className="grid grid-cols-2 gap-5">
+                            <PremiumSelect label="Total Floors" id="floors" value={formData.floors} onChange={update('floors')} options={['1', '2', '3', '4+']} icon={Layers} />
+                            <PremiumSelect label="Parking" id="parking" value={formData.parking} onChange={update('parking')} options={['None', '1 Car', '2 Cars', '3+ Cars']} icon={CheckCircle} />
+                          </div>
+                        )}
+
+                        {formData.propertyType === 'Apartment' && (
+                          <div className="grid grid-cols-2 gap-5">
+                            <PremiumInput label="Floor Number" id="floorNumber" value={formData.floorNumber} onChange={update('floorNumber')} placeholder="e.g. 5th" icon={Layers} />
+                            <PremiumSelect label="Elevator" id="isElevatorAvailable" value={formData.isElevatorAvailable} onChange={update('isElevatorAvailable')} options={['No', 'Yes']} icon={Zap} />
+                          </div>
+                        )}
+                        
+                        {formData.propertyType === 'Apartment' && (
+                          <PremiumInput label="Building Name" id="buildingName" value={formData.buildingName} onChange={update('buildingName')} placeholder="e.g. Silver Oaks" icon={Building} />
+                        )}
+                      </motion.div>
+                    )}
+
+                    {/* DYNAMIC FIELDS: PLOT / LAND */}
+                    {formData.propertyType === 'Plot / Land' && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-6">
+                        <div className="grid grid-cols-2 gap-5">
+                          <PremiumSelect label="Plot Type" id="plotType" value={formData.plotType} onChange={update('plotType')} options={['Residential', 'Commercial', 'Industrial', 'Agricultural']} error={errors.plotType} icon={Map} />
+                          <PremiumSelect label="Possession" id="possessionStatus" value={formData.possessionStatus} onChange={update('possessionStatus')} options={['Immediate', 'Pending', 'In 6 Months', 'In 1 Year']} error={errors.possessionStatus} icon={CheckCircle} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-5">
+                          <PremiumSelect label="Corner Plot" id="isCornerPlot" value={formData.isCornerPlot} onChange={update('isCornerPlot')} options={['No', 'Yes']} icon={Compass} />
+                          <PremiumInput label="Facing" id="facing" value={formData.facing} onChange={update('facing')} placeholder="e.g. North, Park" icon={Compass} />
+                        </div>
+                        <PremiumInput label="Road Width" id="roadWidth" value={formData.roadWidth} onChange={update('roadWidth')} placeholder="e.g. 40 ft" icon={Ruler} />
+                      </motion.div>
+                    )}
+
+                    {/* DYNAMIC FIELDS: COMMERCIAL */}
+                    {formData.propertyType === 'Commercial' && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-6">
+                        <div className="grid grid-cols-2 gap-5">
+                          <PremiumSelect label="Property Sub-Type" id="plotType" value={formData.plotType} onChange={update('plotType')} options={['Shop', 'Office', 'Warehouse', 'Building', 'Factory']} icon={Building} />
+                          <PremiumSelect label="Washrooms" id="washrooms" value={formData.washrooms} onChange={update('washrooms')} options={['0', '1', '2', '3+']} error={errors.washrooms} icon={Bath} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-5">
+                          <PremiumInput label="Floor" id="floors" value={formData.floors} onChange={update('floors')} placeholder="e.g. Ground" icon={Layers} />
+                          <PremiumSelect label="Parking Spaces" id="parking" value={formData.parking} onChange={update('parking')} options={['None', 'Public', 'Private (1-5)', 'Private (5+)']} icon={CheckCircle} />
+                        </div>
+                      </motion.div>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -957,15 +1080,15 @@ const AddProperty = () => {
 
             {/* Next / Submit */}
             <motion.button
-              onClick={step === 8 ? handleSubmit : nextStep}
+              onClick={propertyCount >= 3 ? () => window.location.href = '/subscription' : (step === 8 ? handleSubmit : nextStep)}
               disabled={loading}
               whileHover={!loading ? { scale: 1.04, y: -2 } : {}}
               whileTap={!loading ? { scale: 0.97 } : {}}
               className={`relative flex items-center gap-3 px-10 py-4 rounded-[20px] text-[13px] font-black uppercase tracking-[0.18em] text-white transition-all duration-400 overflow-hidden ${loading ? 'opacity-60 cursor-not-allowed' : ''
                 }`}
               style={!loading ? {
-                background: 'linear-gradient(135deg, #C8102E 0%, #FF3355 100%)',
-                boxShadow: '0 12px 32px -6px rgba(200,16,46,0.45)',
+                background: propertyCount >= 3 ? '#1A0008' : 'linear-gradient(135deg, #C8102E 0%, #FF3355 100%)',
+                boxShadow: propertyCount >= 3 ? '0 12px 32px -6px rgba(0,0,0,0.3)' : '0 12px 32px -6px rgba(200,16,46,0.45)',
               } : { background: '#E5E7EB' }}
             >
               {/* Shimmer sweep */}
@@ -978,11 +1101,14 @@ const AddProperty = () => {
                 />
               )}
               <span className="relative z-10 flex items-center gap-2.5">
-                {step === 8
-                  ? loading
-                    ? <><Loader2 size={18} className="animate-spin" /> Processing...</>
-                    : <><Sparkles size={18} strokeWidth={2} /> Launch Listing</>
-                  : <>Proceed <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" strokeWidth={2.5} /></>}
+                {propertyCount >= 3 
+                  ? <><CloudLightning size={18} /> Upgrade Now</>
+                  : step === 8
+                    ? loading
+                      ? <><Loader2 size={18} className="animate-spin" /> Processing...</>
+                      : <><Sparkles size={18} strokeWidth={2} /> Launch Listing</>
+                    : <>Proceed <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" strokeWidth={2.5} /></>
+                }
               </span>
             </motion.button>
 

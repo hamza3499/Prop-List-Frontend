@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import PremiumNavbar from './PremiumNavbar';
 import AuthNavbar from './AuthNavbar';
-import CustomCursor from './CustomCursor';
 import PremiumFooter from './PremiumFooter';
 
 const Layout = ({ children }) => {
@@ -30,30 +29,36 @@ const Layout = ({ children }) => {
   React.useEffect(() => {
     const INACTIVITY_LIMIT = 30 * 1000; // 30 seconds
     let timeoutId;
+    let debounceId;
 
     const resetTimer = () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        // Log out user
-        const token = localStorage.getItem('token');
-        if (token) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          alert('You have been logged out due to 30 seconds of inactivity.');
-          navigate('/login');
-        }
-      }, INACTIVITY_LIMIT);
+      // Debounce: only actually reset the timer at most once per 500ms
+      if (debounceId) return;
+      debounceId = setTimeout(() => {
+        debounceId = null;
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          const token = localStorage.getItem('token');
+          if (token) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            alert('You have been logged out due to inactivity.');
+            navigate('/login');
+          }
+        }, INACTIVITY_LIMIT);
+      }, 500);
     };
 
-    // Events to track activity
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    events.forEach(event => document.addEventListener(event, resetTimer));
+    // Use passive listeners + only track meaningful events (not mousemove)
+    const events = ['mousedown', 'keypress', 'touchstart'];
+    events.forEach(event => document.addEventListener(event, resetTimer, { passive: true }));
 
     // Initial start
     resetTimer();
 
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
+      if (debounceId) clearTimeout(debounceId);
       events.forEach(event => document.removeEventListener(event, resetTimer));
     };
   }, [navigate]);
@@ -63,7 +68,6 @@ const Layout = ({ children }) => {
   return (
     <div className="min-h-screen relative flex flex-col">
       <div className="grain-overlay" />
-      <CustomCursor />
       
       {isAuthPage ? <AuthNavbar /> : <PremiumNavbar />}
       
