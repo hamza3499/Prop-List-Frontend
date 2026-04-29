@@ -42,7 +42,7 @@ const Tokens = () => (
       --shadow-red:  0 8px 40px -8px rgba(220,38,38,0.25);
     }
 
-    .dark {
+    html.dark, :root.dark, .dark body, .dark {
       --red-pale:  rgba(220,38,38,0.08);
       --red-mid:   rgba(220,38,38,0.4);
 
@@ -284,7 +284,7 @@ const Tokens = () => (
         #fff 100%
       );
     }
-    .dark .hero-grad {
+    html.dark .hero-grad, :root.dark .hero-grad, .dark body .hero-grad, .dark .hero-grad {
       background: linear-gradient(
         160deg,
         #0f0507 0%,
@@ -701,9 +701,17 @@ const Profile = () => {
   const totalPages = Math.ceil(userListings.length / propertiesPerPage);
   const currentProperties = userListings.slice((currentPage - 1) * propertiesPerPage, currentPage * propertiesPerPage);
 
+  const activeListingsCount = userListings.filter(p => {
+    if (p.status && p.status.toLowerCase() !== 'listing') {
+      return p.status.toLowerCase() === 'active';
+    }
+    const days = p.createdAt ? (new Date() - new Date(p.createdAt)) / (1000 * 60 * 60 * 24) : 0;
+    return days <= 30;
+  }).length;
+
   const stats = [
     { icon: Building2, label: 'Total Listed', value: userListings.length, colorVar: '#3b82f6', delay: 0.10 },
-    { icon: Sparkles, label: 'Active Listings', value: userListings.length, colorVar: '#dc2626', delay: 0.18, trend: '+12%' },
+    { icon: Sparkles, label: 'Active Listings', value: activeListingsCount, colorVar: '#dc2626', delay: 0.18, trend: '+12%' },
     { icon: Eye, label: 'Profile Views', value: '1.2k', colorVar: '#f59e0b', delay: 0.26 },
     { icon: Award, label: 'Reputation', value: 98, suffix: '%', colorVar: '#10b981', delay: 0.34, trend: 'Top 5%' },
   ];
@@ -732,19 +740,21 @@ const Profile = () => {
             HERO BANNER — beautiful in light & dark
         ══════════════════════════════════════════════ */}
         <div style={{ position: 'relative', height: 380, overflow: 'hidden' }}>
-          {/* Parallax image */}
-          <motion.div style={{ y: heroY, position: 'absolute', inset: 0 }}>
+          {/* Parallax image & Gradient Background */}
+          <motion.div style={{ y: heroY, position: 'absolute', inset: 0 }} className="hero-grad">
             <img
               src="https://images.unsplash.com/photo-1582407947304-fd86f28f4285?auto=format&fit=crop&q=80&w=2000"
-              style={{ width: '100%', height: '110%', objectFit: 'cover' }}
-              alt="hero"
+              style={{ width: '100%', height: '110%', objectFit: 'cover', opacity: 0.6 }}
+              alt=""
               loading="eager"
               decoding="async"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
             />
             {/* Light-mode: warm cream-tinted overlay; dark-mode handled via CSS */}
             <div style={{
               position: 'absolute', inset: 0,
               background: 'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 50%, var(--surf-1) 100%)',
+              mixBlendMode: 'multiply'
             }} />
           </motion.div>
 
@@ -917,14 +927,19 @@ const Profile = () => {
                   >
                     <Building2 size={16} /> My Listings
                   </motion.button>
-                  <motion.button
-                    className="btn-primary"
-                    whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
-                    onClick={() => window.location.href = '/add-property'}
-                    disabled={verStatus !== 'verified'}
-                  >
-                    <Plus size={16} /> Add Listing
-                  </motion.button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <motion.button
+                      className="btn-primary"
+                      whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
+                      onClick={() => window.location.href = '/add-property'}
+                      disabled={verStatus !== 'verified'}
+                    >
+                      <Plus size={16} /> Add Listing
+                    </motion.button>
+                    {verStatus !== 'verified' && (
+                      <span style={{ fontSize: 11, color: 'var(--red)', textAlign: 'center', fontWeight: 600 }}>Verify your account to enable</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </motion.div>

@@ -11,16 +11,32 @@ const GlassCard = ({ property }) => {
     const seconds = Math.floor((new Date() - date) / 1000);
     
     let interval = seconds / 31536000;
-    if (interval > 1) return Math.floor(interval) + ' years ago';
+    if (interval >= 1) {
+      const v = Math.floor(interval);
+      return v === 1 ? '1 year ago' : `${v} years ago`;
+    }
     interval = seconds / 2592000;
-    if (interval > 1) return Math.floor(interval) + ' months ago';
+    if (interval >= 1) {
+      const v = Math.floor(interval);
+      return v === 1 ? '1 month ago' : `${v} months ago`;
+    }
     interval = seconds / 86400;
-    if (interval > 1) return Math.floor(interval) + ' days ago';
+    if (interval >= 1) {
+      const v = Math.floor(interval);
+      return v === 1 ? '1 day ago' : `${v} days ago`;
+    }
     interval = seconds / 3600;
-    if (interval > 1) return Math.floor(interval) + ' hours ago';
+    if (interval >= 1) {
+      const v = Math.floor(interval);
+      return v === 1 ? '1 hour ago' : `${v} hours ago`;
+    }
     interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + ' min ago';
-    return Math.floor(seconds) + ' sec ago';
+    if (interval >= 1) {
+      const v = Math.floor(interval);
+      return v === 1 ? '1 min ago' : `${v} mins ago`;
+    }
+    const v = Math.floor(seconds);
+    return v === 1 ? '1 sec ago' : `${v} secs ago`;
   };
 
   return (

@@ -35,16 +35,23 @@ const PremiumPropertyCard = ({ property, index, onToggleFavorite }) => {
         delay: index * 0.1, 
         ease: [0.22, 1, 0.36, 1] 
       }}
-      whileHover={{ y: -8, scale: 1.02 }}
       onClick={() => navigate(`/property/${propId}`)}
-      className="group relative flex flex-col bg-white dark:bg-zinc-900 rounded-[32px] overflow-hidden shadow-sm hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.6)] border border-zinc-100 dark:border-white/5 transition-all duration-500 cursor-pointer h-full"
+      className="group relative flex flex-col bg-white dark:bg-zinc-900 rounded-[32px] overflow-hidden shadow-sm hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] dark:hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.6)] border border-zinc-100 dark:border-white/5 cursor-pointer h-full"
+      style={{
+        transform: 'translateZ(0)',
+        transition: 'transform 0.35s cubic-bezier(0.33,1,0.68,1), box-shadow 0.35s ease',
+        willChange: 'transform'
+      }}
+      onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-8px) scale(1.02) translateZ(0)'}
+      onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0) scale(1) translateZ(0)'}
     >
       {/* Image Section */}
       <div className="relative h-[260px] overflow-hidden">
-        <motion.img
+        <img
           src={property.image}
           alt={property.title}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out"
+          className="w-full h-full object-cover group-hover:scale-[1.1]"
+          style={{ transition: 'transform 1s ease-out', willChange: 'transform' }}
         />
         {/* Bottom Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
