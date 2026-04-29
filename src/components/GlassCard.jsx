@@ -26,22 +26,24 @@ const GlassCard = ({ property }) => {
 
   return (
     <Link to={`/property/${propId}`} className="block h-full">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        whileHover={{ y: -12 }}
-        className="group relative flex flex-col h-full bg-white dark:bg-zinc-900 rounded-[28px] border border-outline-variant/10 shadow-md hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-500 overflow-hidden"
+      <div
+        className="group relative flex flex-col h-full bg-white dark:bg-zinc-900 rounded-[28px] border border-outline-variant/10 shadow-md hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] overflow-hidden"
+        style={{
+          transform: 'translateZ(0)',
+          transition: 'transform 0.35s cubic-bezier(0.33,1,0.68,1), box-shadow 0.35s ease',
+          willChange: 'transform',
+        }}
+        onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-10px) translateZ(0)'}
+        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0) translateZ(0)'}
       >
         {/* Image Container */}
         <div className="relative h-[240px] overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-          <motion.img
+          <img
             src={property.image}
             alt={property.title}
             loading="lazy"
-            whileHover={{ scale: 1.08 }}
-            transition={{ duration: 0.6, ease: [0.33, 1, 0.68, 1] }}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover group-hover:scale-[1.06]"
+            style={{ transition: 'transform 0.6s cubic-bezier(0.33,1,0.68,1)', willChange: 'transform' }}
           />
           
           {/* Price & Status Badges */}
