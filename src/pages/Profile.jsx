@@ -1,180 +1,585 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion';
 import {
-  User, Mail, Plus, MapPin, Edit2, Building2,
+  User, Mail, Plus, Edit2, Building2,
   Sparkles, Eye, CheckCircle, ArrowRight, Save,
   ShieldCheck, ShieldAlert, Clock, X, Phone, Home as HomeIcon,
-  Camera, Star, TrendingUp, Award, Zap, ChevronRight, BarChart3
+  Camera, Award, ChevronRight, BarChart3, TrendingUp
 } from 'lucide-react';
-import { getMyProperties, getToken, uploadAvatar, resolveImageUrl, updateUserProfile, submitVerification, getUserProfile } from '../services/api';
+import {
+  getMyProperties, getToken, uploadAvatar,
+  resolveImageUrl, updateUserProfile, submitVerification, getUserProfile
+} from '../services/api';
 import GlassCard from '../components/GlassCard';
-import GlowButton from '../components/GlowButton';
 
-// ─── Tilt Card (3D hover effect) ────────────────────────────────────────────
-const TiltCard = ({ children, className = '', intensity = 8 }) => {
+/* ─────────────────────────────────────────────────────────────
+   DESIGN TOKENS — injected as <style> so they work in both modes
+───────────────────────────────────────────────────────────── */
+const Tokens = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
+    :root {
+      --red:       #dc2626;
+      --red-light: #ef4444;
+      --red-pale:  #fff1f1;
+      --red-mid:   #fca5a5;
+
+      /* Light surface palette */
+      --surf-0:  #ffffff;
+      --surf-1:  #fafafa;
+      --surf-2:  #f4f4f5;
+      --surf-3:  #e4e4e7;
+
+      --ink-0:  #09090b;
+      --ink-1:  #3f3f46;
+      --ink-2:  #71717a;
+      --ink-3:  #a1a1aa;
+
+      --radius-card: 28px;
+      --radius-pill: 999px;
+      --shadow-card: 0 8px 48px -8px rgba(0,0,0,0.10), 0 2px 12px -2px rgba(0,0,0,0.06);
+      --shadow-red:  0 8px 40px -8px rgba(220,38,38,0.25);
+    }
+
+    .dark {
+      --red-pale:  rgba(220,38,38,0.08);
+      --red-mid:   rgba(220,38,38,0.4);
+
+      --surf-0:  #0c0c0e;
+      --surf-1:  #111113;
+      --surf-2:  #18181b;
+      --surf-3:  #27272a;
+
+      --ink-0:  #fafafa;
+      --ink-1:  #d4d4d8;
+      --ink-2:  #a1a1aa;
+      --ink-3:  #52525b;
+
+      --shadow-card: 0 8px 48px -8px rgba(0,0,0,0.5), 0 2px 12px -2px rgba(0,0,0,0.3);
+      --shadow-red:  0 8px 40px -8px rgba(220,38,38,0.35);
+    }
+
+    .profile-root * { box-sizing: border-box; }
+
+    .profile-root {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--surf-1);
+      color: var(--ink-0);
+      min-height: 100vh;
+    }
+
+    /* ── Card ── */
+    .p-card {
+      background: var(--surf-0);
+      border: 1px solid var(--surf-3);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-card);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* light mode: add a very subtle top accent stripe */
+    .p-card::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent 0%, var(--red) 40%, var(--red-light) 60%, transparent 100%);
+      opacity: 0.5;
+    }
+
+    /* ── Pill badge ── */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 14px;
+      border-radius: var(--radius-pill);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+    .pill-red   { background: var(--red-pale); color: var(--red); border: 1px solid rgba(220,38,38,0.2); }
+    .pill-green { background: rgba(16,185,129,0.08); color: #059669; border: 1px solid rgba(16,185,129,0.2); }
+    .pill-blue  { background: rgba(59,130,246,0.08); color: #2563eb; border: 1px solid rgba(59,130,246,0.2); }
+    .pill-amber { background: rgba(245,158,11,0.08); color: #d97706; border: 1px solid rgba(245,158,11,0.2); }
+    .pill-gray  { background: var(--surf-2); color: var(--ink-2); border: 1px solid var(--surf-3); }
+
+    /* ── Stat card ── */
+    .stat-card {
+      background: var(--surf-0);
+      border: 1px solid var(--surf-3);
+      border-radius: 20px;
+      padding: 24px 22px;
+      box-shadow: var(--shadow-card);
+      position: relative;
+      overflow: hidden;
+      cursor: default;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-red);
+    }
+    /* light: subtle inner top border colored per accent */
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 20px 20px 0 0;
+      background: var(--stat-color, var(--red));
+      opacity: 0.7;
+    }
+
+    /* ── Input ── */
+    .p-input {
+      width: 100%;
+      padding: 13px 16px;
+      border-radius: 14px;
+      border: 1.5px solid var(--surf-3);
+      background: var(--surf-1);
+      color: var(--ink-0);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .p-input:focus {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(220,38,38,0.1);
+    }
+    .p-input::placeholder { color: var(--ink-3); }
+
+    /* ── Primary button ── */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 13px 28px;
+      border-radius: 14px;
+      background: var(--red);
+      color: #fff;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: none;
+      cursor: pointer;
+      box-shadow: var(--shadow-red);
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary:hover { background: var(--red-light); transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* Shimmer sweep on btn-primary */
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+      transform: translateX(-100%) skewX(-12deg);
+      transition: transform 0.6s;
+    }
+    .btn-primary:hover::after { transform: translateX(100%) skewX(-12deg); }
+
+    /* ── Secondary button ── */
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 13px 28px;
+      border-radius: 14px;
+      background: var(--surf-2);
+      color: var(--ink-1);
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border: 1.5px solid var(--surf-3);
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    }
+    .btn-secondary:hover {
+      background: var(--surf-3);
+      border-color: var(--red);
+      color: var(--red);
+      transform: translateY(-1px);
+    }
+
+    /* ── Avatar ring ── */
+    @keyframes ring-spin { to { transform: rotate(360deg); } }
+    .avatar-ring {
+      position: absolute;
+      inset: -6px;
+      border-radius: 50%;
+      border: 2px dashed rgba(220,38,38,0.35);
+      animation: ring-spin 12s linear infinite;
+    }
+    .avatar-ring-2 {
+      position: absolute;
+      inset: -14px;
+      border-radius: 50%;
+      border: 1.5px dashed rgba(220,38,38,0.15);
+      animation: ring-spin 20s linear infinite reverse;
+    }
+
+    /* ── Orbit dot ── */
+    @keyframes orbit { from{transform:rotate(0deg) translateX(80px) rotate(0deg)} to{transform:rotate(360deg) translateX(80px) rotate(-360deg)} }
+    @keyframes orbit2{ from{transform:rotate(60deg) translateX(106px) rotate(-60deg)} to{transform:rotate(420deg) translateX(106px) rotate(-420deg)} }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--red);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-label::before {
+      content: '';
+      display: block;
+      width: 24px;
+      height: 2px;
+      background: var(--red);
+      border-radius: 2px;
+    }
+
+    /* ── Empty state ── */
+    @keyframes float-empty { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    .float-empty { animation: float-empty 3s ease-in-out infinite; }
+
+    /* ── Pulse dot ── */
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.7)} }
+
+    /* ── Shimmer ── */
+    @keyframes shimmer { from{background-position:-200% center} to{background-position:200% center} }
+    .shimmer-text {
+      background: linear-gradient(90deg, var(--ink-0) 30%, var(--red) 50%, var(--ink-0) 70%);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 5s linear infinite;
+    }
+
+    /* ── Hero gradient — works beautifully in light ── */
+    .hero-grad {
+      background: linear-gradient(
+        160deg,
+        #fff8f8 0%,
+        #fff1f1 30%,
+        #ffeaea 60%,
+        #fff 100%
+      );
+    }
+    .dark .hero-grad {
+      background: linear-gradient(
+        160deg,
+        #0f0507 0%,
+        #130508 30%,
+        #0c0c0e 60%,
+        #0c0c0e 100%
+      );
+    }
+
+    /* ── Mesh pattern ── */
+    .mesh-pattern {
+      background-image: radial-gradient(circle, rgba(220,38,38,0.07) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+    .dark .mesh-pattern {
+      background-image: radial-gradient(circle, rgba(220,38,38,0.12) 1px, transparent 1px);
+    }
+
+    /* ── Property card wrapper ── */
+    .prop-card {
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .prop-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-red); }
+
+    /* ── Pagination btn ── */
+    .pg-btn {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1.5px solid var(--surf-3);
+      background: var(--surf-0);
+      color: var(--ink-2);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .pg-btn:hover { border-color: var(--red); color: var(--red); }
+    .pg-btn.active { background: var(--red); border-color: var(--red); color: #fff; transform: scale(1.08); box-shadow: var(--shadow-red); }
+    .pg-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    /* ── Verification alert ── */
+    .verify-alert {
+      padding: 14px 18px;
+      border-radius: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      max-width: 480px;
+    }
+    .verify-alert.amber {
+      background: rgba(245,158,11,0.07);
+      border: 1.5px solid rgba(245,158,11,0.22);
+    }
+    .verify-alert.blue {
+      background: rgba(59,130,246,0.07);
+      border: 1.5px solid rgba(59,130,246,0.22);
+    }
+
+    /* ── Modal ── */
+    .modal-card {
+      background: var(--surf-0);
+      border: 1px solid var(--surf-3);
+      border-radius: 32px;
+      box-shadow: 0 40px 120px -20px rgba(0,0,0,0.35);
+      width: 100%;
+      max-width: 480px;
+      position: relative;
+      overflow: hidden;
+    }
+    .modal-card::before {
+      content: '';
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--red), transparent);
+    }
+
+    /* ── DM Serif ── */
+    .serif { font-family: 'DM Serif Display', serif; }
+  `}</style>
+);
+
+/* ─────────────────────────────────────────────────────────────
+   TILT CARD
+───────────────────────────────────────────────────────────── */
+const TiltCard = ({ children, className = '', intensity = 6 }) => {
   const ref = useRef(null);
   const x = useMotionValue(0);
   const y = useMotionValue(0);
-  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [intensity, -intensity]), { stiffness: 200, damping: 20 });
-  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-intensity, intensity]), { stiffness: 200, damping: 20 });
-  const glowX = useTransform(x, [-0.5, 0.5], ['0%', '100%']);
-  const glowY = useTransform(y, [-0.5, 0.5], ['0%', '100%']);
+  const rX = useSpring(useTransform(y, [-0.5, 0.5], [intensity, -intensity]), { stiffness: 180, damping: 22 });
+  const rY = useSpring(useTransform(x, [-0.5, 0.5], [-intensity, intensity]), { stiffness: 180, damping: 22 });
 
-  const handleMouse = (e) => {
+  const onMove = (e) => {
     if (!ref.current) return;
-    requestAnimationFrame(() => {
-      const rect = ref.current.getBoundingClientRect();
-      x.set((e.clientX - rect.left) / rect.width - 0.5);
-      y.set((e.clientY - rect.top) / rect.height - 0.5);
-    });
+    const r = ref.current.getBoundingClientRect();
+    x.set((e.clientX - r.left) / r.width - 0.5);
+    y.set((e.clientY - r.top) / r.height - 0.5);
   };
-  const reset = () => { x.set(0); y.set(0); };
+  const onLeave = () => { x.set(0); y.set(0); };
 
   return (
-    <motion.div
-      ref={ref}
-      onMouseMove={handleMouse}
-      onMouseLeave={reset}
-      style={{ rotateX, rotateY, transformStyle: 'preserve-3d', transformPerspective: 1000 }}
-      className={`relative ${className}`}
-    >
-      {/* Dynamic glow */}
-      <motion.div
-        className="absolute inset-0 rounded-[inherit] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-500 z-0"
-        style={{
-          background: `radial-gradient(circle at ${glowX} ${glowY}, rgba(220,38,38,0.15), transparent 60%)`,
-        }}
-      />
-      <div style={{ transform: 'translateZ(0px)' }} className="relative z-10 h-full">
-        {children}
-      </div>
+    <motion.div ref={ref} onMouseMove={onMove} onMouseLeave={onLeave}
+      style={{ rotateX: rX, rotateY: rY, transformStyle: 'preserve-3d', transformPerspective: 1000 }}
+      className={className}>
+      {children}
     </motion.div>
   );
 };
 
-// ─── Animated Counter ────────────────────────────────────────────────────────
-const Counter = ({ target, suffix = '', duration = 1500 }) => {
-  const [count, setCount] = useState(0);
-  const [started, setStarted] = useState(false);
+/* ─────────────────────────────────────────────────────────────
+   ANIMATED COUNTER
+───────────────────────────────────────────────────────────── */
+const Counter = ({ target, suffix = '' }) => {
+  const [n, setN] = useState(0);
   const ref = useRef(null);
+  const started = useRef(false);
 
   useEffect(() => {
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setStarted(true); }, { threshold: 0.5 });
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !started.current) {
+        started.current = true;
+        let f = 0;
+        const steps = 50;
+        const inc = target / steps;
+        const iv = setInterval(() => {
+          f += inc;
+          if (f >= target) { setN(target); clearInterval(iv); }
+          else setN(Math.floor(f));
+        }, 30);
+      }
+    }, { threshold: 0.5 });
     if (ref.current) obs.observe(ref.current);
     return () => obs.disconnect();
-  }, []);
+  }, [target]);
 
-  useEffect(() => {
-    if (!started) return;
-    let start = 0;
-    const steps = 60;
-    const inc = target / steps;
-    const interval = duration / steps;
-    const t = setInterval(() => {
-      start += inc;
-      if (start >= target) { setCount(target); clearInterval(t); }
-      else setCount(Math.floor(start));
-    }, interval);
-    return () => clearInterval(t);
-  }, [started, target, duration]);
-
-  return <span ref={ref}>{typeof target === 'string' ? target : count.toLocaleString()}{suffix}</span>;
+  return <span ref={ref}>{typeof target === 'string' ? target : n}{suffix}</span>;
 };
 
-// ─── Particle Ring (around avatar) ──────────────────────────────────────────
-const ParticleRing = ({ size = 220 }) => {
-  const particles = Array.from({ length: 12 }, (_, i) => i);
-  return (
-    <div className="absolute inset-0 pointer-events-none" style={{ width: size, height: size }}>
-      {particles.map((i) => {
-        const angle = (i / particles.length) * 360;
-        const delay = i * 0.15;
-        return (
-          <motion.div
-            key={i}
-            className="absolute w-1.5 h-1.5 rounded-full bg-red-500"
-            style={{
-              top: '50%', left: '50%',
-              transformOrigin: `0 ${-size / 2 + 8}px`,
-              rotate: angle,
-              marginLeft: -3, marginTop: -3,
-            }}
-            animate={{ opacity: [0.2, 1, 0.2], scale: [0.6, 1.3, 0.6] }}
-            transition={{ duration: 2.5, delay, repeat: Infinity, ease: 'easeInOut' }}
-          />
-        );
-      })}
-    </div>
-  );
-};
+/* ─────────────────────────────────────────────────────────────
+   STAT CARD
+───────────────────────────────────────────────────────────── */
+const StatCard = ({ icon: Icon, label, value, colorVar, delay, suffix = '', trend }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 30 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+    className="stat-card group"
+    style={{ '--stat-color': colorVar }}
+  >
+    {/* Subtle corner glow */}
+    <div style={{
+      position: 'absolute', top: -40, right: -40,
+      width: 120, height: 120, borderRadius: '50%',
+      background: `radial-gradient(circle, ${colorVar}20, transparent)`,
+      filter: 'blur(24px)',
+      opacity: 0,
+      transition: 'opacity 0.4s',
+    }} className="group-hover:opacity-100" />
 
-// ─── Stat Card ───────────────────────────────────────────────────────────────
-const StatCard = ({ icon: Icon, label, value, color, delay, suffix = '' }) => (
-  <TiltCard intensity={6} className="group">
-    <motion.div
-      initial={{ opacity: 0, y: 40 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      className="relative bg-white dark:bg-[#0d0d0d] rounded-[28px] p-7 border border-gray-100 dark:border-white/5 overflow-hidden hover:shadow-2xl hover:shadow-red-500/10 transition-all duration-500 cursor-default h-full"
-    >
-      {/* BG glow */}
-      <div className={`absolute -top-8 -right-8 w-28 h-28 rounded-full blur-2xl opacity-0 group-hover:opacity-30 transition-opacity duration-700 ${color.replace('text-', 'bg-')}`} />
-
-      <div className="flex items-start justify-between mb-6">
-        <div className={`w-13 h-13 w-12 h-12 rounded-2xl flex items-center justify-center ${color} bg-current/10`}
-          style={{ background: 'rgba(220,38,38,0.08)' }}>
-          <Icon size={22} className={color} strokeWidth={2} />
-        </div>
-        <motion.div
-          initial={{ rotate: 0 }}
-          whileHover={{ rotate: 45 }}
-          className="text-gray-200 dark:text-white/10"
-        >
-          <ChevronRight size={18} />
-        </motion.div>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+      <div style={{
+        width: 46, height: 46, borderRadius: 14,
+        background: `${colorVar}12`,
+        border: `1.5px solid ${colorVar}25`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Icon size={20} style={{ color: colorVar }} strokeWidth={2} />
       </div>
+      {trend && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: '#10b981' }}>
+          <TrendingUp size={12} /> {trend}
+        </div>
+      )}
+    </div>
 
-      <p className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter mb-1">
-        {typeof value === 'string' ? value : <Counter target={value} suffix={suffix} />}
-      </p>
-      <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">{label}</p>
-
-      {/* Shimmer on hover */}
-      <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 pointer-events-none" />
-    </motion.div>
-  </TiltCard>
+    <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: '2.4rem', lineHeight: 1, color: 'var(--ink-0)', marginBottom: 6 }}>
+      {typeof value === 'string' ? value : <Counter target={value} suffix={suffix} />}
+    </div>
+    <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--ink-3)' }}>
+      {label}
+    </div>
+  </motion.div>
 );
 
-// ─── Verification Badge ──────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
+   VERIFICATION BADGE
+───────────────────────────────────────────────────────────── */
 const VerifBadge = ({ status }) => {
   if (status === 'verified') return (
     <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 300 }}
-      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-500">
-      <ShieldCheck size={13} strokeWidth={3} />
-      <span className="text-[10px] font-black uppercase tracking-[0.2em]">Verified</span>
-      <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ repeat: Infinity, duration: 2 }}
-        className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+      className="pill pill-green">
+      <ShieldCheck size={11} strokeWidth={3} />
+      Verified
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', animation: 'pulse-dot 2s ease-in-out infinite', display: 'inline-block' }} />
     </motion.div>
   );
   if (status === 'pending') return (
-    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-400">
-      <Clock size={13} className="animate-spin" style={{ animationDuration: '3s' }} />
-      <span className="text-[10px] font-black uppercase tracking-[0.2em]">Under Review</span>
+    <div className="pill pill-blue">
+      <Clock size={11} style={{ animation: 'ring-spin 3s linear infinite' }} />
+      Under Review
     </div>
   );
   if (status === 'rejected') return (
-    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/10 border border-red-500/30 text-red-500">
-      <ShieldAlert size={13} />
-      <span className="text-[10px] font-black uppercase tracking-[0.2em]">Rejected</span>
+    <div className="pill pill-red">
+      <ShieldAlert size={11} />
+      Rejected
     </div>
   );
   return null;
 };
 
-// ─── Main Profile ────────────────────────────────────────────────────────────
+/* ─────────────────────────────────────────────────────────────
+   ORBIT AVATAR — premium animated avatar with orbital dots
+───────────────────────────────────────────────────────────── */
+const OrbitAvatar = ({ user, userName, verStatus, uploading, onClick }) => (
+  <div style={{ position: 'relative', width: 180, height: 180, flexShrink: 0 }}>
+    {/* Orbit dots */}
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', width: 8, height: 8, borderRadius: '50%', background: 'var(--red)', boxShadow: '0 0 10px var(--red)', animation: 'orbit 8s linear infinite' }} />
+      <div style={{ position: 'absolute', width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', boxShadow: '0 0 8px #f59e0b', animation: 'orbit2 12s linear infinite' }} />
+    </div>
+
+    {/* Dashed rings */}
+    <div className="avatar-ring-2" />
+    <div className="avatar-ring" />
+
+    {/* Avatar circle */}
+    <motion.div
+      whileHover={{ scale: 1.05 }}
+      onClick={onClick}
+      style={{
+        position: 'absolute', inset: 0,
+        borderRadius: '50%', overflow: 'hidden', cursor: 'pointer',
+        border: '3px solid var(--surf-0)',
+        boxShadow: '0 0 0 3px var(--red), 0 16px 48px -8px rgba(220,38,38,0.35)',
+      }}
+    >
+      {user.avatar ? (
+        <img src={resolveImageUrl(user.avatar)} alt={userName}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s' }}
+          onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.1)'}
+          onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+        />
+      ) : (
+        <div style={{
+          width: '100%', height: '100%',
+          background: 'linear-gradient(135deg, #fff1f1, #ffd6d6)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <User size={56} style={{ color: 'var(--red)', opacity: 0.6 }} strokeWidth={1} />
+        </div>
+      )}
+      {/* Overlay on hover */}
+      <div style={{
+        position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        opacity: 0, transition: 'opacity 0.3s', backdropFilter: 'blur(4px)',
+      }}
+        onMouseEnter={e => e.currentTarget.style.opacity = 1}
+        onMouseLeave={e => e.currentTarget.style.opacity = 0}>
+        {uploading
+          ? <div style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid #fff', borderTopColor: 'transparent', animation: 'ring-spin 0.8s linear infinite' }} />
+          : <Camera size={28} color="#fff" />}
+      </div>
+    </motion.div>
+
+    {/* Verified badge */}
+    {verStatus === 'verified' && (
+      <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', delay: 0.6 }}
+        style={{
+          position: 'absolute', bottom: 6, right: 6,
+          width: 36, height: 36, borderRadius: '50%',
+          background: '#10b981',
+          border: '3px solid var(--surf-0)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 4px 12px rgba(16,185,129,0.4)',
+          zIndex: 10,
+        }}>
+        <ShieldCheck size={16} color="#fff" strokeWidth={3} />
+      </motion.div>
+    )}
+  </div>
+);
+
+/* ─────────────────────────────────────────────────────────────
+   MAIN PROFILE COMPONENT
+───────────────────────────────────────────────────────────── */
 const Profile = () => {
   const listingsRef = useRef(null);
-  const heroRef = useRef(null);
+  const fileInputRef = useRef(null);
+
   const [userListings, setUserListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -183,7 +588,6 @@ const Profile = () => {
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const fileInputRef = useRef(null);
   const propertiesPerPage = 6;
 
   const [showVerifyModal, setShowVerifyModal] = useState(false);
@@ -198,20 +602,21 @@ const Profile = () => {
   const verStatus = user.verificationStatus || 'unverified';
 
   const { scrollY } = useScroll();
-  const bgY = useTransform(scrollY, [0, 400], [0, 80]);
+  const heroY = useTransform(scrollY, [0, 400], [0, 70]);
 
+  /* ── fetch ── */
   const fetchUserData = async () => {
     try {
       const token = getToken();
       if (token) {
-        const fullProfile = await getUserProfile(token);
-        if (fullProfile) {
-          const updatedUser = { ...user, ...fullProfile };
-          localStorage.setItem('user', JSON.stringify(updatedUser));
-          setUser(updatedUser);
+        const profile = await getUserProfile(token);
+        if (profile) {
+          const u = { ...user, ...profile };
+          localStorage.setItem('user', JSON.stringify(u));
+          setUser(u);
         }
         const data = await getMyProperties(token);
-        const formatted = data.map(p => ({
+        setUserListings(data.map(p => ({
           ...p,
           location: p.city || p.location || 'Unknown Location',
           image: resolveImageUrl(p.images?.[0] || p.image),
@@ -221,61 +626,58 @@ const Profile = () => {
           status: 'Listing',
           price: String(p.price).startsWith('PKR') ? p.price : `PKR ${Number(p.price).toLocaleString()}`,
           views: Math.floor(Math.random() * 500) + 50,
-        }));
-        setUserListings(formatted);
+        })));
       }
     } catch (err) {
-      console.error("Failed to load profile data:", err);
+      console.error('Profile load error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { 
-    let isMounted = true;
-    const load = async () => {
-      if(isMounted) await fetchUserData();
-    };
-    load();
-    return () => { isMounted = false; };
+  useEffect(() => {
+    let alive = true;
+    fetchUserData().then(() => { }).catch(() => { });
+    return () => { alive = false; };
   }, []);
 
+  /* ── avatar upload ── */
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith('image/')) return;
     setUploading(true);
     try {
-      const token = getToken();
       const fd = new FormData();
       fd.append('avatar', file);
-      const result = await uploadAvatar(fd, token);
-      const updatedUser = { ...user, avatar: result.avatar };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
-    } catch (err) {
-      console.error(err);
+      const res = await uploadAvatar(fd, getToken());
+      const u = { ...user, avatar: res.avatar };
+      localStorage.setItem('user', JSON.stringify(u));
+      setUser(u);
     } finally {
       setUploading(false);
     }
   };
 
+  /* ── save name ── */
   const handleSaveName = async () => {
-    if (!editedName.trim() || editedName.trim().length < 2) { setEditError('Name must be at least 2 characters'); return; }
+    if (!editedName.trim() || editedName.trim().length < 2) {
+      setEditError('Name must be at least 2 characters'); return;
+    }
     setSaving(true); setEditError('');
     try {
-      const token = getToken();
-      const result = await updateUserProfile({ name: editedName.trim() }, token);
-      const updatedUser = { ...user, name: result.user.name };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
+      const res = await updateUserProfile({ name: editedName.trim() }, getToken());
+      const u = { ...user, name: res.user.name };
+      localStorage.setItem('user', JSON.stringify(u));
+      setUser(u);
       setIsEditing(false);
     } catch (err) {
-      setEditError(err.message || 'Failed to update name');
+      setEditError(err.message || 'Update failed');
     } finally {
       setSaving(false);
     }
   };
 
+  /* ── verify submit ── */
   const handleVerifySubmit = async (e) => {
     e.preventDefault(); setVError('');
     if (!/^\d{5}-\d{7}-\d{1}$/.test(vData.cnic)) { setVError('Invalid CNIC. Format: xxxxx-xxxxxxx-x'); return; }
@@ -283,11 +685,10 @@ const Profile = () => {
     if (!vData.address.trim()) { setVError('Address is required'); return; }
     setVerifying(true);
     try {
-      const token = getToken();
-      await submitVerification(vData, token);
-      const updatedUser = { ...user, verificationStatus: 'pending' };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
+      await submitVerification(vData, getToken());
+      const u = { ...user, verificationStatus: 'pending' };
+      localStorage.setItem('user', JSON.stringify(u));
+      setUser(u);
       setVSuccess(true);
       setTimeout(() => { setShowVerifyModal(false); setVSuccess(false); }, 3000);
     } catch (err) {
@@ -301,488 +702,515 @@ const Profile = () => {
   const currentProperties = userListings.slice((currentPage - 1) * propertiesPerPage, currentPage * propertiesPerPage);
 
   const stats = [
-    { icon: Building2, label: 'Total Listed', value: userListings.length, color: 'text-blue-500', delay: 0.1 },
-    { icon: Sparkles, label: 'Active Listings', value: userListings.length, color: 'text-red-500', delay: 0.2 },
-    { icon: Eye, label: 'Profile Views', value: '1.2k', color: 'text-amber-500', delay: 0.3 },
-    { icon: Award, label: 'Reputation', value: 98, suffix: '%', color: 'text-emerald-500', delay: 0.4 },
+    { icon: Building2, label: 'Total Listed', value: userListings.length, colorVar: '#3b82f6', delay: 0.10 },
+    { icon: Sparkles, label: 'Active Listings', value: userListings.length, colorVar: '#dc2626', delay: 0.18, trend: '+12%' },
+    { icon: Eye, label: 'Profile Views', value: '1.2k', colorVar: '#f59e0b', delay: 0.26 },
+    { icon: Award, label: 'Reputation', value: 98, suffix: '%', colorVar: '#10b981', delay: 0.34, trend: 'Top 5%' },
   ];
 
+  /* ── Loading ── */
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FAFAFA] dark:bg-[#050505]">
-      <div className="flex flex-col items-center gap-6">
-        <div className="relative w-16 h-16">
-          <div className="absolute inset-0 border-4 border-red-500/10 border-t-red-500 rounded-full animate-spin" />
-          <User className="absolute inset-0 m-auto text-red-500/20" size={22} />
+    <>
+      <Tokens />
+      <div className="profile-root" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', border: '3px solid rgba(220,38,38,0.15)', borderTopColor: 'var(--red)', animation: 'ring-spin 0.9s linear infinite' }} />
+          <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.3em', textTransform: 'uppercase', color: 'var(--ink-3)', animation: 'pulse-dot 1.5s ease-in-out infinite' }}>
+            Loading Profile
+          </p>
         </div>
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 animate-pulse">Loading Profile</p>
       </div>
-    </div>
+    </>
   );
 
   return (
-    <div className="relative min-h-screen bg-[#FAFAFA] dark:bg-[#050505] pb-32 overflow-x-hidden">
+    <>
+      <Tokens />
+      <div className="profile-root">
 
-      {/* ─── HERO BANNER ──────────────────────────────────────────────────── */}
-      <div ref={heroRef} className="relative w-full h-[420px] overflow-hidden">
-        {/* Parallax BG */}
-        <motion.div style={{ y: bgY }} className="absolute inset-0">
-          <img
-            src="https://images.unsplash.com/photo-1582407947304-fd86f28f4285?auto=format&fit=crop&q=80&w=2000"
-            className="w-full h-full object-cover scale-110"
-            alt="hero"
-            loading="eager"
-            decoding="async"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-[#FAFAFA] dark:to-[#050505]" />
-        </motion.div>
+        {/* ══════════════════════════════════════════════
+            HERO BANNER — beautiful in light & dark
+        ══════════════════════════════════════════════ */}
+        <div style={{ position: 'relative', height: 380, overflow: 'hidden' }}>
+          {/* Parallax image */}
+          <motion.div style={{ y: heroY, position: 'absolute', inset: 0 }}>
+            <img
+              src="https://images.unsplash.com/photo-1582407947304-fd86f28f4285?auto=format&fit=crop&q=80&w=2000"
+              style={{ width: '100%', height: '110%', objectFit: 'cover' }}
+              alt="hero"
+              loading="eager"
+              decoding="async"
+            />
+            {/* Light-mode: warm cream-tinted overlay; dark-mode handled via CSS */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 50%, var(--surf-1) 100%)',
+            }} />
+          </motion.div>
 
-        {/* Floating orbs */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {/* Floating blobs */}
           {[
-            { size: 400, color: 'rgba(220,38,38,0.2)', x: '10%', y: '10%', dur: 12 },
-            { size: 300, color: 'rgba(185,28,28,0.15)', x: '70%', y: '40%', dur: 16 },
-          ].map((orb, i) => (
+            { size: 360, color: 'rgba(220,38,38,0.22)', x: '8%', y: '5%', dur: 14 },
+            { size: 280, color: 'rgba(239,68,68,0.15)', x: '65%', y: '35%', dur: 18 },
+          ].map((o, i) => (
             <motion.div key={i}
-              className="absolute rounded-full"
-              style={{ width: orb.size, height: orb.size, background: `radial-gradient(circle, ${orb.color}, transparent)`, left: orb.x, top: orb.y, filter: 'blur(60px)' }}
-              animate={{ x: [0, 30, -20, 0], y: [0, -40, 20, 0] }}
-              transition={{ duration: orb.dur, repeat: Infinity, ease: 'easeInOut' }}
+              style={{
+                position: 'absolute', width: o.size, height: o.size, borderRadius: '50%',
+                background: `radial-gradient(circle, ${o.color}, transparent)`,
+                left: o.x, top: o.y, filter: 'blur(55px)', pointerEvents: 'none',
+              }}
+              animate={{ x: [0, 25, -15, 0], y: [0, -30, 18, 0] }}
+              transition={{ duration: o.dur, repeat: Infinity, ease: 'easeInOut' }}
             />
           ))}
+
+          {/* Hero title */}
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 5, paddingTop: 48 }}>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="pill pill-red"
+              style={{ marginBottom: 14, backdropFilter: 'blur(8px)', background: 'rgba(220,38,38,0.18)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}
+            >
+              <Sparkles size={10} /> Executive Member
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+              className="serif"
+              style={{ fontSize: 'clamp(2.8rem, 6vw, 5rem)', color: '#fff', textAlign: 'center', lineHeight: 1.05, letterSpacing: '-0.02em' }}
+            >
+              {userName}<span style={{ color: '#fca5a5' }}>.</span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.55 }}
+              style={{ color: 'rgba(255,255,255,0.65)', fontSize: 14, marginTop: 8 }}
+            >
+              {userEmail}
+            </motion.p>
+          </div>
         </div>
 
-        {/* Hero text */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center z-10 pt-16">
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-white/40 text-xs font-black uppercase tracking-[0.4em] mb-3"
-          >
-          </motion.p>
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-            className="text-5xl md:text-7xl font-black text-white tracking-tighter text-center"
-          >
-            {userName}<span className="text-red-400">.</span>
-          </motion.h1>
-        </div>
+        {/* ══════════════════════════════════════════════
+            PAGE BODY
+        ══════════════════════════════════════════════ */}
+        <div style={{ maxWidth: 1120, margin: '0 auto', padding: '0 20px 80px', position: 'relative', zIndex: 10, marginTop: -80 }}>
 
-        {/* Diagonal cut */}
-        <div
-          className="absolute bottom-0 left-0 right-0 h-20 pointer-events-none dark:hidden"
-          style={{
-            background: "linear-gradient(to bottom right, transparent 49%, #FAFAFA 50%)"
-          }}
-        />
-      </div>
+          {/* ── PROFILE CARD ── */}
+          <TiltCard intensity={3} style={{ marginBottom: 20 }}>
+            <motion.div
+              initial={{ opacity: 0, y: 32 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="p-card"
+              style={{ padding: 'clamp(24px, 4vw, 40px)' }}
+            >
+              {/* Mesh pattern BG */}
+              <div className="mesh-pattern" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', opacity: 0.4 }} />
+              {/* Corner accent */}
+              <div style={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(220,38,38,0.08), transparent)', pointerEvents: 'none' }} />
 
-      <div className="container mx-auto px-4 md:px-6 max-w-6xl relative z-10 -mt-20 space-y-12">
+              <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 32 }}>
 
-        {/* ─── PROFILE CARD ─────────────────────────────────────────────── */}
-        <TiltCard intensity={4} className="group">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-            className="relative bg-white dark:bg-[#0d0d0d] rounded-[40px] border border-gray-100 dark:border-white/5 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.12)] dark:shadow-[0_40px_100px_-20px_rgba(220,38,38,0.08)] overflow-hidden"
-          >
-            {/* Top accent line */}
-            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-60" />
-
-            {/* BG mesh */}
-            <div className="absolute inset-0 opacity-[0.015] dark:opacity-[0.03]"
-              style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #000 1px, transparent 0)', backgroundSize: '24px 24px' }} />
-            <div className="absolute top-0 right-0 w-96 h-96 bg-red-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-
-            <div className="relative z-10 p-8 md:p-12 flex flex-col lg:flex-row items-center lg:items-start gap-10">
-
-              {/* Avatar */}
-              <div className="relative shrink-0 flex items-center justify-center" style={{ width: 180, height: 180 }}>
-                <ParticleRing size={180} />
-                <motion.div
-                  whileHover={{ scale: 1.04 }}
+                {/* Avatar */}
+                <OrbitAvatar
+                  user={user} userName={userName} verStatus={verStatus}
+                  uploading={uploading}
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-40 h-40 rounded-full cursor-pointer relative overflow-hidden ring-4 ring-white dark:ring-[#1a1a1a] shadow-2xl shadow-red-500/20 group/avatar"
-                  style={{ transform: 'translateZ(30px)' }}
-                >
-                  {user.avatar ? (
-                    <img src={resolveImageUrl(user.avatar)} alt={userName} loading="lazy" decoding="async" className="w-full h-full object-cover transition-transform duration-500 group-hover/avatar:scale-110" />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-red-500/20 to-red-900/30 flex items-center justify-center">
-                      <User size={60} className="text-red-400" strokeWidth={1} />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/avatar:opacity-100 transition-all duration-300 flex items-center justify-center backdrop-blur-sm">
-                    {uploading
-                      ? <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      : <Camera size={26} className="text-white" />}
+                />
+                <input ref={fileInputRef} type="file" style={{ display: 'none' }} accept="image/*" onChange={handleAvatarChange} />
+
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                    <VerifBadge status={verStatus} />
+                    <div className="pill pill-gray">✦ Executive Member</div>
                   </div>
-                </motion.div>
-                <input ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleAvatarChange} />
 
-                {/* Verified check badge */}
-                {verStatus === 'verified' && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', delay: 0.5 }}
-                    className="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-emerald-500 border-4 border-white dark:border-[#0d0d0d] flex items-center justify-center shadow-lg z-20"
-                    style={{ transform: 'translateZ(40px)' }}
-                  >
-                    <ShieldCheck size={16} className="text-white" strokeWidth={3} />
-                  </motion.div>
-                )}
-              </div>
+                  {/* Name / edit */}
+                  <AnimatePresence mode="wait">
+                    {isEditing ? (
+                      <motion.div key="edit" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={{ marginBottom: 16 }}>
+                        <input
+                          className="p-input serif"
+                          style={{ fontSize: '1.9rem', fontWeight: 700, maxWidth: 340, marginBottom: 10 }}
+                          value={editedName}
+                          onChange={e => setEditedName(e.target.value)}
+                          autoFocus
+                          placeholder="Your name"
+                        />
+                        {editError && <p style={{ color: 'var(--red)', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{editError}</p>}
+                        <div style={{ display: 'flex', gap: 10 }}>
+                          <button className="btn-primary" onClick={handleSaveName} disabled={saving} style={{ padding: '10px 20px', fontSize: 12 }}>
+                            {saving ? <div style={{ width: 12, height: 12, borderRadius: '50%', border: '2px solid #fff', borderTopColor: 'transparent', animation: 'ring-spin 0.8s linear infinite' }} /> : <Save size={13} />}
+                            Save
+                          </button>
+                          <button className="btn-secondary" onClick={() => { setIsEditing(false); setEditError(''); }} style={{ padding: '10px 20px', fontSize: 12 }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div key="display" initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                        <h2 className="serif" style={{ fontSize: 'clamp(1.8rem, 4vw, 3rem)', color: 'var(--ink-0)', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+                          {userName}
+                        </h2>
+                        <motion.button
+                          whileHover={{ scale: 1.1, rotate: 8 }} whileTap={{ scale: 0.9 }}
+                          onClick={() => { setEditedName(userName); setIsEditing(true); setEditError(''); }}
+                          style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--surf-2)', border: '1.5px solid var(--surf-3)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--ink-2)', transition: 'all 0.2s', flexShrink: 0 }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--red-pale)'; e.currentTarget.style.color = 'var(--red)'; e.currentTarget.style.borderColor = 'rgba(220,38,38,0.3)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'var(--surf-2)'; e.currentTarget.style.color = 'var(--ink-2)'; e.currentTarget.style.borderColor = 'var(--surf-3)'; }}
+                        >
+                          <Edit2 size={15} />
+                        </motion.button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
-              {/* Identity Info */}
-              <div className="flex-1 space-y-5 text-center lg:text-left">
-                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3">
-                  <span className="px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-[0.2em]">
-                    ✦ Executive Member
-                  </span>
-                  <VerifBadge status={verStatus} />
-                  {verStatus === 'rejected' && (
-                    <span className="px-3 py-1.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-[0.2em]">
-                      Rejected
-                    </span>
+                  <p style={{ display: 'flex', alignItems: 'center', gap: 7, color: 'var(--ink-2)', fontSize: 14, marginBottom: 20 }}>
+                    <Mail size={14} style={{ color: 'var(--red)', opacity: 0.7 }} /> {userEmail}
+                  </p>
+
+                  {/* Verify alerts */}
+                  {(verStatus === 'unverified' || verStatus === 'rejected') && (
+                    <motion.div initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }} className="verify-alert amber" style={{ marginBottom: 0 }}>
+                      <ShieldAlert size={18} style={{ color: '#d97706', flexShrink: 0, marginTop: 2 }} />
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 13, fontWeight: 800, color: '#92400e', marginBottom: 3 }}>
+                          {verStatus === 'rejected' ? 'Verification Rejected' : 'Account Not Verified'}
+                        </p>
+                        <p style={{ fontSize: 12, color: '#b45309', opacity: 0.8 }}>Verify your identity to list premium properties.</p>
+                      </div>
+                      <button
+                        className="btn-primary"
+                        onClick={() => setShowVerifyModal(true)}
+                        style={{ background: '#d97706', boxShadow: '0 4px 16px rgba(217,119,6,0.35)', padding: '9px 16px', fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0 }}
+                      >
+                        {verStatus === 'rejected' ? 'Try Again' : 'Verify Now'}
+                      </button>
+                    </motion.div>
                   )}
-                </div>
-
-                {/* Name */}
-                <AnimatePresence mode="wait">
-                  {isEditing ? (
-                    <motion.div key="editing" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="space-y-3">
-                      <input
-                        type="text"
-                        value={editedName}
-                        onChange={e => setEditedName(e.target.value)}
-                        autoFocus
-                        className={`text-4xl font-black bg-gray-50 dark:bg-white/5 border-2 rounded-2xl px-5 py-3 outline-none w-full max-w-sm text-gray-900 dark:text-white tracking-tight transition-colors ${editError ? 'border-red-500' : 'border-gray-200 dark:border-white/10 focus:border-red-500'}`}
-                        placeholder="Your name"
-                      />
-                      {editError && <p className="text-red-500 text-xs font-bold">{editError}</p>}
-                      <div className="flex gap-3">
-                        <button onClick={handleSaveName} disabled={saving}
-                          className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-red-500 text-white text-xs font-black uppercase tracking-widest hover:bg-red-600 transition-all shadow-lg shadow-red-500/25 active:scale-95 disabled:opacity-60">
-                          {saving ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save size={13} />} Save
-                        </button>
-                        <button onClick={() => { setIsEditing(false); setEditError(''); }} disabled={saving}
-                          className="px-6 py-2.5 rounded-2xl bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-white/60 text-xs font-black uppercase tracking-widest hover:bg-gray-200 transition-all active:scale-95">
-                          Cancel
-                        </button>
+                  {verStatus === 'pending' && (
+                    <motion.div initial={{ opacity: 0, x: -14 }} animate={{ opacity: 1, x: 0 }} className="verify-alert blue">
+                      <Clock size={18} style={{ color: '#2563eb', animation: 'ring-spin 4s linear infinite', flexShrink: 0 }} />
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 800, color: '#1d4ed8', marginBottom: 3 }}>Verification Under Review</p>
+                        <p style={{ fontSize: 12, color: '#1e40af', opacity: 0.8 }}>Our team is reviewing your credentials.</p>
                       </div>
                     </motion.div>
-                  ) : (
-                    <motion.div key="display" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                      className="flex items-center gap-4 justify-center lg:justify-start">
-                      <h1 className="text-5xl md:text-6xl font-black text-gray-900 dark:text-white tracking-tighter leading-none">
-                        {userName}
-                      </h1>
-                      <motion.button
-                        whileHover={{ scale: 1.1, rotate: 5 }}
-                        whileTap={{ scale: 0.9 }}
-                        onClick={() => { setEditedName(userName); setIsEditing(true); setEditError(''); }}
-                        className="w-10 h-10 rounded-2xl bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
-                      >
-                        <Edit2 size={16} />
-                      </motion.button>
-                    </motion.div>
                   )}
-                </AnimatePresence>
-
-                <p className="flex items-center gap-2 text-gray-400 font-medium text-sm justify-center lg:justify-start">
-                  <Mail size={15} className="text-red-500/60" /> {userEmail}
-                </p>
-
-                {/* Verification Alert Banner */}
-                {(verStatus === 'unverified' || verStatus === 'rejected') && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                    className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/15 max-w-lg"
-                  >
-                    <ShieldAlert size={20} className="text-amber-500 shrink-0" />
-                    <div className="flex-1 text-center sm:text-left">
-                      <p className="text-sm font-black text-amber-700 dark:text-amber-400">
-                        {verStatus === 'rejected' ? 'Verification Rejected' : 'Account Not Verified'}
-                      </p>
-                      <p className="text-xs text-amber-600/60 dark:text-amber-400/40 mt-0.5">Verify your identity to list premium properties.</p>
-                    </div>
-                    <button onClick={() => setShowVerifyModal(true)}
-                      className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-md active:scale-95 whitespace-nowrap">
-                      {verStatus === 'rejected' ? 'Try Again' : 'Verify Now'}
-                    </button>
-                  </motion.div>
-                )}
-                {verStatus === 'pending' && (
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-blue-50 dark:bg-blue-500/5 border border-blue-200 dark:border-blue-500/15 max-w-lg"
-                  >
-                    <Clock size={20} className="text-blue-500 animate-spin shrink-0" style={{ animationDuration: '4s' }} />
-                    <div>
-                      <p className="text-sm font-black text-blue-700 dark:text-blue-400">Verification Under Review</p>
-                      <p className="text-xs text-blue-600/60 dark:text-blue-400/40 mt-0.5">Our team is reviewing your credentials.</p>
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col gap-3 shrink-0 w-full lg:w-auto">
-                <motion.button
-                  whileHover={{ scale: 1.03, y: -2 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => listingsRef.current?.scrollIntoView({ behavior: 'smooth' })}
-                  className="flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl border-2 border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-gray-700 dark:text-white text-sm font-black uppercase tracking-widest hover:border-red-500/30 transition-all"
-                >
-                  <Building2 size={17} /> My Listings
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.03, y: -2 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => window.location.href = '/add-property'}
-                  disabled={verStatus !== 'verified'}
-                  className={`flex items-center justify-center gap-2.5 px-8 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all relative overflow-hidden group/btn
-                    ${verStatus === 'verified'
-                      ? 'bg-red-600 hover:bg-red-500 text-white shadow-xl shadow-red-500/30'
-                      : 'bg-gray-100 dark:bg-white/5 text-gray-400 cursor-not-allowed'}`}
-                >
-                  {verStatus === 'verified' && (
-                    <div className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12" />
-                  )}
-                  <Plus size={17} className="relative z-10" />
-                  <span className="relative z-10">Add Listing</span>
-                </motion.button>
-              </div>
-            </div>
-          </motion.div>
-        </TiltCard>
-
-        {/* ─── STATS ────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((s) => (
-            <StatCard key={s.label} {...s} />
-          ))}
-        </div>
-
-        {/* ─── LISTINGS ─────────────────────────────────────────────────── */}
-        <div ref={listingsRef} className="space-y-10 pt-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="flex flex-col md:flex-row justify-between items-end gap-6"
-          >
-            <div className="space-y-2">
-              <p className="text-red-500 text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2">
-                <span className="w-6 h-px bg-red-500" /> Your Portfolio
-              </p>
-              <h2 className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tighter">
-                Property <span className="text-red-500 italic">Collection</span>
-              </h2>
-            </div>
-            {userListings.length > 0 && (
-              <div className="px-5 py-2.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-[0.2em]">
-                {userListings.length} Active {userListings.length === 1 ? 'Listing' : 'Listings'}
-              </div>
-            )}
-          </motion.div>
-
-          {userListings.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.97 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="relative py-36 rounded-[48px] border-2 border-dashed border-gray-200 dark:border-white/5 bg-white dark:bg-[#0d0d0d] text-center overflow-hidden"
-            >
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(220,38,38,0.04)_0%,_transparent_70%)]" />
-              <div className="relative z-10 space-y-8">
-                <motion.div
-                  animate={{ y: [0, -12, 0] }}
-                  transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
-                  className="w-24 h-24 mx-auto rounded-[32px] bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 flex items-center justify-center"
-                >
-                  <Building2 size={44} className="text-gray-300 dark:text-white/20" strokeWidth={1} />
-                </motion.div>
-                <div>
-                  <h3 className="text-3xl font-black text-gray-300 dark:text-white/20 tracking-tight">No listings yet.</h3>
-                  <p className="text-gray-400 dark:text-white/20 mt-2 max-w-xs mx-auto text-sm">Add your first property and start showcasing to verified buyers.</p>
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => window.location.href = '/add-property'}
-                  disabled={verStatus !== 'verified'}
-                  className={`inline-flex items-center gap-2.5 px-10 py-4 rounded-2xl text-sm font-black uppercase tracking-widest transition-all
-                    ${verStatus === 'verified' ? 'bg-red-600 text-white shadow-xl shadow-red-500/25 hover:bg-red-500' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
-                >
-                  <Plus size={17} /> Add First Property
-                </motion.button>
+
+                {/* Action buttons */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0, width: '100%', maxWidth: 200 }}>
+                  <motion.button
+                    className="btn-secondary"
+                    whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
+                    onClick={() => listingsRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                  >
+                    <Building2 size={16} /> My Listings
+                  </motion.button>
+                  <motion.button
+                    className="btn-primary"
+                    whileHover={{ y: -2 }} whileTap={{ scale: 0.97 }}
+                    onClick={() => window.location.href = '/add-property'}
+                    disabled={verStatus !== 'verified'}
+                  >
+                    <Plus size={16} /> Add Listing
+                  </motion.button>
+                </div>
               </div>
             </motion.div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {currentProperties.map((prop, index) => (
-                  <motion.div
-                    key={prop._id || prop.id || index}
-                    initial={{ opacity: 0, y: 40 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                  >
-                    <GlassCard property={prop} />
-                  </motion.div>
-                ))}
-              </div>
+          </TiltCard>
 
-              {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-3 pt-8">
-                  <button onClick={() => { setCurrentPage(p => p - 1); listingsRef.current?.scrollIntoView({ behavior: 'smooth' }); }} disabled={currentPage === 1}
-                    className="w-11 h-11 rounded-2xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-500 hover:border-red-500/40 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                    <ArrowRight className="rotate-180" size={18} />
-                  </button>
-                  <div className="flex gap-2">
+          {/* ── STATS ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14, marginBottom: 56 }}>
+            {stats.map((s) => <StatCard key={s.label} {...s} />)}
+          </div>
+
+          {/* ── LISTINGS SECTION ── */}
+          <div ref={listingsRef}>
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginBottom: 36 }}
+            >
+              <div>
+                <div className="section-label" style={{ marginBottom: 10 }}>Your Portfolio</div>
+                <h2 className="serif" style={{ fontSize: 'clamp(2rem, 4vw, 3rem)', color: 'var(--ink-0)', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+                  Property{' '}
+                  <em style={{ color: 'var(--red)', fontStyle: 'italic' }}>Collection</em>
+                </h2>
+              </div>
+              {userListings.length > 0 && (
+                <div className="pill pill-red" style={{ fontSize: 11 }}>
+                  {userListings.length} Active {userListings.length === 1 ? 'Listing' : 'Listings'}
+                </div>
+              )}
+            </motion.div>
+
+            {/* Empty state */}
+            {userListings.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                style={{
+                  padding: '80px 24px',
+                  borderRadius: 28,
+                  border: '2px dashed var(--surf-3)',
+                  background: 'var(--surf-0)',
+                  textAlign: 'center',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Subtle radial glow */}
+                <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 40%, rgba(220,38,38,0.04), transparent 65%)', pointerEvents: 'none' }} />
+
+                <div className="float-empty" style={{
+                  width: 88, height: 88, borderRadius: 24,
+                  background: 'var(--surf-2)',
+                  border: '1.5px solid var(--surf-3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto 28px',
+                }}>
+                  <Building2 size={40} style={{ color: 'var(--ink-3)', opacity: 0.7 }} strokeWidth={1} />
+                </div>
+
+                <h3 className="serif" style={{ fontSize: '1.8rem', color: 'var(--ink-2)', marginBottom: 10 }}>No listings yet.</h3>
+                <p style={{ color: 'var(--ink-3)', fontSize: 14, maxWidth: 300, margin: '0 auto 28px' }}>
+                  Add your first property and start showcasing to verified buyers.
+                </p>
+                <motion.button
+                  className="btn-primary"
+                  whileHover={{ y: -2, scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  onClick={() => window.location.href = '/add-property'}
+                  disabled={verStatus !== 'verified'}
+                >
+                  <Plus size={16} /> Add First Property
+                </motion.button>
+              </motion.div>
+            ) : (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 20 }}>
+                  {currentProperties.map((prop, i) => (
+                    <motion.div
+                      key={prop._id || prop.id || i}
+                      initial={{ opacity: 0, y: 32 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.07, duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+                      className="prop-card"
+                    >
+                      <GlassCard property={prop} />
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 40 }}>
+                    <button
+                      className="pg-btn"
+                      onClick={() => { setCurrentPage(p => p - 1); listingsRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
+                      disabled={currentPage === 1}
+                    >
+                      <ArrowRight size={17} style={{ transform: 'rotate(180deg)' }} />
+                    </button>
+
                     {[...Array(totalPages)].map((_, i) => (
-                      <button key={i} onClick={() => { setCurrentPage(i + 1); listingsRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
-                        className={`w-11 h-11 rounded-2xl font-black text-sm transition-all duration-300 ${currentPage === i + 1 ? 'bg-red-500 text-white shadow-lg shadow-red-500/30 scale-110' : 'bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-500 hover:border-red-500/30'}`}>
+                      <button
+                        key={i}
+                        className={`pg-btn ${currentPage === i + 1 ? 'active' : ''}`}
+                        onClick={() => { setCurrentPage(i + 1); listingsRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
+                      >
                         {i + 1}
                       </button>
                     ))}
+
+                    <button
+                      className="pg-btn"
+                      onClick={() => { setCurrentPage(p => p + 1); listingsRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
+                      disabled={currentPage === totalPages}
+                    >
+                      <ArrowRight size={17} />
+                    </button>
                   </div>
-                  <button onClick={() => { setCurrentPage(p => p + 1); listingsRef.current?.scrollIntoView({ behavior: 'smooth' }); }} disabled={currentPage === totalPages}
-                    className="w-11 h-11 rounded-2xl bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-500 hover:border-red-500/40 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                    <ArrowRight size={18} />
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+                )}
+              </>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* ─── VERIFICATION MODAL ──────────────────────────────────────────── */}
-      <AnimatePresence>
-        {showVerifyModal && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center px-4 bg-black/70 backdrop-blur-xl"
-            onClick={(e) => { if (e.target === e.currentTarget) setShowVerifyModal(false); }}
-          >
+        {/* ══════════════════════════════════════════════
+            VERIFICATION MODAL
+        ══════════════════════════════════════════════ */}
+        <AnimatePresence>
+          {showVerifyModal && (
             <motion.div
-              initial={{ scale: 0.85, opacity: 0, y: 40 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.85, opacity: 0, y: 40 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-              className="bg-white dark:bg-[#0d0d0d] rounded-[36px] w-full max-w-lg overflow-hidden shadow-[0_40px_120px_rgba(0,0,0,0.6)] border border-gray-100 dark:border-white/5 relative"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              style={{
+                position: 'fixed', inset: 0, zIndex: 200,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: 20,
+                background: 'rgba(0,0,0,0.6)',
+                backdropFilter: 'blur(14px)',
+              }}
+              onClick={e => { if (e.target === e.currentTarget) setShowVerifyModal(false); }}
             >
-              {/* Top accent */}
-              <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-red-500 to-transparent" />
-
-              <div className="p-8 md:p-10">
-                <AnimatePresence mode="wait">
-                  {vSuccess ? (
-                    <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                      className="py-16 text-center space-y-6">
-                      <motion.div
-                        animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: 2, duration: 0.4 }}
-                        className="w-24 h-24 bg-emerald-500/10 rounded-[32px] flex items-center justify-center mx-auto"
-                      >
-                        <CheckCircle size={48} className="text-emerald-500" strokeWidth={1.5} />
-                      </motion.div>
-                      <div>
-                        <h3 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Submitted!</h3>
-                        <p className="text-gray-400 mt-2 text-sm max-w-xs mx-auto">Your verification request is now pending admin review.</p>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight flex items-center gap-3">
-                            <ShieldCheck size={28} className="text-red-500" /> Identity Verification
-                          </h2>
-                          <p className="text-sm text-gray-400 mt-1">Provide your legal credentials to get verified.</p>
-                        </div>
-                        <motion.button whileHover={{ scale: 1.1, rotate: 90 }} transition={{ duration: 0.2 }}
-                          onClick={() => setShowVerifyModal(false)}
-                          className="w-10 h-10 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-200 dark:hover:bg-white/10 transition-all">
-                          <X size={18} />
-                        </motion.button>
-                      </div>
-
-                      <form onSubmit={handleVerifySubmit} className="space-y-5">
-                        {/* CNIC */}
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">CNIC</label>
-                          <input type="text" value={vData.cnic} onChange={e => setVData({ ...vData, cnic: e.target.value })}
-                            placeholder="xxxxx-xxxxxxx-x"
-                            className="w-full px-5 py-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 outline-none focus:border-red-500 dark:focus:border-red-500 transition-colors text-gray-900 dark:text-white font-mono font-bold text-sm" />
-                        </div>
-
-                        {/* Phone */}
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">Phone Number</label>
-                          <div className="relative">
-                            <Phone size={16} className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400" />
-                            <input type="text" value={vData.phone} onChange={e => setVData({ ...vData, phone: e.target.value })}
-                              placeholder="03XXXXXXXXX"
-                              className="w-full pl-12 pr-5 py-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 outline-none focus:border-red-500 dark:focus:border-red-500 transition-colors text-gray-900 dark:text-white font-bold text-sm" />
-                          </div>
-                        </div>
-
-                        {/* Address */}
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">Full Address</label>
-                          <div className="relative">
-                            <HomeIcon size={16} className="absolute left-5 top-5 text-gray-400" />
-                            <textarea value={vData.address} onChange={e => setVData({ ...vData, address: e.target.value })}
-                              placeholder="House #, Street, City"
-                              rows={3}
-                              className="w-full pl-12 pr-5 py-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 outline-none focus:border-red-500 dark:focus:border-red-500 transition-colors text-gray-900 dark:text-white font-bold text-sm resize-none" />
-                          </div>
-                        </div>
-
-                        <AnimatePresence>
-                          {vError && (
-                            <motion.p initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-                              className="text-red-500 text-xs font-black text-center py-2 px-4 bg-red-50 dark:bg-red-500/10 rounded-2xl border border-red-100 dark:border-red-500/20">
-                              {vError}
-                            </motion.p>
-                          )}
-                        </AnimatePresence>
-
-                        <motion.button
-                          type="submit"
-                          disabled={verifying}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          className="w-full py-5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-black uppercase tracking-widest text-sm shadow-xl shadow-red-500/25 transition-all relative overflow-hidden group/submit disabled:opacity-60 disabled:cursor-not-allowed"
+              <motion.div
+                initial={{ scale: 0.88, opacity: 0, y: 32 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.88, opacity: 0, y: 32 }}
+                transition={{ type: 'spring', stiffness: 210, damping: 22 }}
+                className="modal-card"
+              >
+                <div style={{ padding: 'clamp(24px, 5vw, 40px)' }}>
+                  <AnimatePresence mode="wait">
+                    {vSuccess ? (
+                      <motion.div key="success" initial={{ opacity: 0, scale: 0.92 }} animate={{ opacity: 1, scale: 1 }}
+                        style={{ padding: '48px 0', textAlign: 'center' }}>
+                        <motion.div
+                          animate={{ scale: [1, 1.12, 1] }}
+                          transition={{ repeat: 2, duration: 0.4 }}
+                          style={{
+                            width: 88, height: 88, borderRadius: 28,
+                            background: 'rgba(16,185,129,0.1)',
+                            border: '1.5px solid rgba(16,185,129,0.3)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            margin: '0 auto 24px',
+                          }}
                         >
-                          <div className="absolute inset-0 -translate-x-full group-hover/submit:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/15 to-transparent skew-x-12" />
-                          <span className="relative z-10 flex items-center justify-center gap-2">
-                            {verifying ? (
-                              <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Submitting...</>
-                            ) : (
-                              <><ShieldCheck size={16} /> Submit Verification</>
-                            )}
-                          </span>
-                        </motion.button>
-                      </form>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                          <CheckCircle size={44} style={{ color: '#10b981' }} strokeWidth={1.5} />
+                        </motion.div>
+                        <h3 className="serif" style={{ fontSize: '2rem', color: 'var(--ink-0)', marginBottom: 8 }}>Submitted!</h3>
+                        <p style={{ color: 'var(--ink-2)', fontSize: 14 }}>Your request is pending admin review.</p>
+                      </motion.div>
+                    ) : (
+                      <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        {/* Modal header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 28 }}>
+                          <div>
+                            <div className="pill pill-red" style={{ marginBottom: 10 }}>
+                              <ShieldCheck size={10} /> Identity Verification
+                            </div>
+                            <h2 className="serif" style={{ fontSize: '1.8rem', color: 'var(--ink-0)', lineHeight: 1.15 }}>
+                              Get Verified
+                            </h2>
+                            <p style={{ color: 'var(--ink-2)', fontSize: 13, marginTop: 4 }}>
+                              Provide your legal credentials below.
+                            </p>
+                          </div>
+                          <motion.button
+                            whileHover={{ scale: 1.1, rotate: 90 }}
+                            onClick={() => setShowVerifyModal(false)}
+                            style={{
+                              width: 36, height: 36, borderRadius: 10,
+                              background: 'var(--surf-2)', border: '1.5px solid var(--surf-3)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              cursor: 'pointer', color: 'var(--ink-2)',
+                            }}
+                          >
+                            <X size={16} />
+                          </motion.button>
+                        </div>
 
-      {/* Fixed ambient orbs */}
-      <div className="fixed top-1/4 right-0 w-96 h-96 bg-red-500/4 dark:bg-red-500/5 rounded-full blur-[100px] pointer-events-none" />
-      <div className="fixed bottom-1/4 left-0 w-80 h-80 bg-red-500/4 dark:bg-red-500/4 rounded-full blur-[100px] pointer-events-none" />
-    </div>
+                        <form onSubmit={handleVerifySubmit}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+                            {/* CNIC */}
+                            <div>
+                              <label style={{ display: 'block', fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 7 }}>
+                                CNIC
+                              </label>
+                              <input className="p-input" type="text"
+                                value={vData.cnic}
+                                onChange={e => setVData({ ...vData, cnic: e.target.value })}
+                                placeholder="xxxxx-xxxxxxx-x"
+                                style={{ fontFamily: 'monospace', fontWeight: 600 }}
+                              />
+                            </div>
+
+                            {/* Phone */}
+                            <div>
+                              <label style={{ display: 'block', fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 7 }}>
+                                Phone Number
+                              </label>
+                              <div style={{ position: 'relative' }}>
+                                <Phone size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-3)' }} />
+                                <input className="p-input" type="text"
+                                  value={vData.phone}
+                                  onChange={e => setVData({ ...vData, phone: e.target.value })}
+                                  placeholder="03XXXXXXXXX"
+                                  style={{ paddingLeft: 40 }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Address */}
+                            <div>
+                              <label style={{ display: 'block', fontSize: 10, fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 7 }}>
+                                Full Address
+                              </label>
+                              <div style={{ position: 'relative' }}>
+                                <HomeIcon size={15} style={{ position: 'absolute', left: 14, top: 16, color: 'var(--ink-3)' }} />
+                                <textarea className="p-input" rows={3}
+                                  value={vData.address}
+                                  onChange={e => setVData({ ...vData, address: e.target.value })}
+                                  placeholder="House #, Street, City"
+                                  style={{ paddingLeft: 40, resize: 'none' }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Error */}
+                            <AnimatePresence>
+                              {vError && (
+                                <motion.div
+                                  initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                                  style={{ padding: '10px 14px', borderRadius: 12, background: 'var(--red-pale)', border: '1.5px solid rgba(220,38,38,0.2)', color: 'var(--red)', fontSize: 13, fontWeight: 600 }}
+                                >
+                                  {vError}
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+
+                            <motion.button
+                              type="submit"
+                              className="btn-primary"
+                              disabled={verifying}
+                              whileHover={{ scale: 1.02, y: -1 }}
+                              whileTap={{ scale: 0.98 }}
+                              style={{ width: '100%', padding: '16px', fontSize: 14, marginTop: 4 }}
+                            >
+                              {verifying
+                                ? <><div style={{ width: 16, height: 16, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#fff', animation: 'ring-spin 0.8s linear infinite' }} /> Submitting...</>
+                                : <><ShieldCheck size={16} /> Submit Verification</>
+                              }
+                            </motion.button>
+                          </div>
+                        </form>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Ambient fixed orbs */}
+        <div style={{ position: 'fixed', top: '20%', right: 0, width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(220,38,38,0.04), transparent)', filter: 'blur(80px)', pointerEvents: 'none', zIndex: 0 }} />
+        <div style={{ position: 'fixed', bottom: '20%', left: 0, width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(220,38,38,0.03), transparent)', filter: 'blur(80px)', pointerEvents: 'none', zIndex: 0 }} />
+      </div>
+    </>
   );
 };
 

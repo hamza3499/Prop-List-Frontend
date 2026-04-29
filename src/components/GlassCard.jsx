@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { Bed, Bath, Move, MapPin, ArrowUpRight } from 'lucide-react';
 
 const GlassCard = ({ property }) => {
@@ -107,7 +106,7 @@ const GlassCard = ({ property }) => {
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
     </Link>
   );
 };
