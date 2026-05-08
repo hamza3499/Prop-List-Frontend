@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import {
   Upload, Plus, X, CheckCircle, ArrowRight, ArrowLeft,
-  Home, MapPin, DollarSign, Image as ImageIcon, Bed, Bath,
+  Home, MapPin, Image as ImageIcon, Bed, Bath,
   Move, FileText, Eye, Shield, Sparkles, Info, AlertCircle,
   Tag, Compass, Phone, MessageCircle, Map, Layers, Building, Key,
-  Loader2, BadgeCent, Check, CloudLightning, Save, ChevronDown, Ruler
+  Loader2, BadgeCent, Check, CloudLightning, Save, ChevronDown, Ruler, Clock, History
 } from 'lucide-react';
 import { addProperty, getToken, getUserProfile, getMyProperties } from '../services/api';
 import GlowButton from '../components/GlowButton';
@@ -23,6 +23,8 @@ function Zap(props) {
   );
 }
 
+const PKRIcon = () => <span className="text-[10px] font-black tracking-tight" style={{ color: 'inherit' }}>PKR</span>;
+
 /* ─── DESIGN TOKENS ──────────────────────────────────────────── */
 // Primary: #C8102E (deep crimson-red)
 // Light accent: #FF3355
@@ -34,8 +36,16 @@ function Zap(props) {
    PREMIUM INPUT
 ══════════════════════════════════════════════════════════════ */
 const PremiumInput = ({ label, id, type = 'text', value, onChange, error, placeholder, helper, icon: Icon }) => {
+  const inputRef = useRef(null);
   const [isFocused, setIsFocused] = useState(false);
   const hasValue = String(value || '').length > 0;
+  const [hasText, setHasText] = useState(false);
+
+  useEffect(() => {
+    if (inputRef.current) setHasText(inputRef.current.value.length > 0);
+  }, [value]);
+
+  const active = isFocused || hasValue || hasText;
 
   return (
     <div className="relative w-full group">
@@ -51,24 +61,30 @@ const PremiumInput = ({ label, id, type = 'text', value, onChange, error, placeh
         }`}>
 
         {/* Icon slot */}
-        <div className={`pl-5 pr-3 shrink-0 transition-all duration-300 ${isFocused ? 'text-[#C8102E] scale-110' : hasValue ? 'text-[#C8102E]' : 'text-gray-300'
-          }`}>
-          {Icon && <Icon size={22} strokeWidth={isFocused || hasValue ? 2.5 : 2} />}
+        <div className={`pl-5 pr-3 shrink-0 transition-all duration-300 ${isFocused ? 'text-[#C8102E] scale-110' : active ? 'text-[#C8102E]' : 'text-gray-300'
+          } flex items-center justify-center`}>
+          {Icon && <Icon size={22} strokeWidth={isFocused || active ? 2.5 : 2} />}
+          {id === 'price' && <PKRIcon />}
         </div>
 
         {/* Label + Input */}
         <div className="flex-1 relative h-[68px] flex flex-col justify-center">
-          <label htmlFor={id} className={`absolute left-0 pointer-events-none font-bold transition-all duration-300 ${isFocused || hasValue
+          <label htmlFor={id} className={`absolute left-0 pointer-events-none font-medium transition-all duration-300 ${active
               ? 'top-[10px] text-[10px] text-[#C8102E] uppercase tracking-[0.22em]'
               : 'top-1/2 -translate-y-1/2 text-[14px] text-gray-400 tracking-wide'
             }`}>{label}</label>
 
           <input
-            id={id} type={type} value={value} onChange={onChange}
+            ref={inputRef}
+            id={id} type={type} value={value} 
+            onChange={(e) => {
+              setHasText(e.target.value.length > 0);
+              onChange(e);
+            }}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder={isFocused ? placeholder : ''}
-            className={`w-full bg-transparent border-none outline-none text-gray-900 font-bold pr-4 transition-all duration-300 ${hasValue || isFocused ? 'pt-6 text-[15px] tracking-wide' : 'pt-0 text-[15px]'
+            className={`w-full bg-transparent border-none outline-none text-gray-900 font-medium pr-4 transition-all duration-300 ${active ? 'pt-6 text-[15px] tracking-wide' : 'pt-0 text-[15px]'
               }`}
           />
         </div>
@@ -163,7 +179,7 @@ const PremiumSelect = ({ label, id, value, onChange, options = [], error, icon: 
             return (
               <li key={i}
                 onClick={() => { onChange({ target: { value: val } }); setIsOpen(false); }}
-                className={`px-5 py-3.5 cursor-pointer flex items-center gap-3 text-sm transition-all duration-200 ${isSel ? 'bg-red-50 text-[#C8102E] font-black' : 'text-gray-600 hover:bg-red-50/60 hover:text-[#C8102E] font-medium'
+                className={`px-5 py-3.5 cursor-pointer flex items-center gap-3 text-sm transition-all duration-200 ${isSel ? 'bg-red-50 text-[#C8102E] font-bold' : 'text-gray-600 hover:bg-red-50/60 hover:text-[#C8102E] font-medium'
                   }`}
               >
                 {OptIcon && <OptIcon size={16} className={isSel ? 'text-[#C8102E]' : 'text-gray-300'} />}
@@ -189,9 +205,9 @@ const PremiumSelect = ({ label, id, value, onChange, options = [], error, icon: 
           {Icon && <Icon size={22} strokeWidth={isOpen || hasValue ? 2.5 : 2} />}
         </div>
         <div className="flex-1 relative h-full flex flex-col justify-center overflow-hidden pr-2">
-          <span className={`absolute left-0 pointer-events-none font-bold transition-all duration-300 ${isOpen || hasValue ? 'top-[10px] text-[10px] text-[#C8102E] uppercase tracking-[0.22em]' : 'top-1/2 -translate-y-1/2 text-[14px] text-gray-400'
+          <span className={`absolute left-0 pointer-events-none font-medium transition-all duration-300 ${isOpen || hasValue ? 'top-[10px] text-[10px] text-[#C8102E] uppercase tracking-[0.22em]' : 'top-1/2 -translate-y-1/2 text-[14px] text-gray-400'
             }`}>{label}</span>
-          <span className={`text-gray-900 font-black truncate transition-all duration-300 text-[15px] ${hasValue || isOpen ? 'pt-5' : 'opacity-0'}`}>{displayLabel}</span>
+          <span className={`text-gray-900 font-medium truncate transition-all duration-300 text-[15px] ${hasValue || isOpen ? 'pt-5' : 'opacity-0'}`}>{displayLabel}</span>
         </div>
         <div className={`px-5 shrink-0 transition-transform duration-400 ${isOpen ? 'rotate-180 text-[#C8102E]' : 'text-gray-300'}`}>
           <ChevronDown size={20} strokeWidth={2.5} />
@@ -222,12 +238,12 @@ const PremiumTextarea = ({ label, id, value, onChange, error, placeholder, helpe
           {Icon && <Icon size={22} strokeWidth={isFocused || hasValue ? 2.5 : 2} />}
         </div>
         <div className="flex-1 relative min-h-[148px] flex flex-col">
-          <label htmlFor={id} className={`absolute left-0 pointer-events-none font-bold transition-all duration-300 ${isFocused || hasValue ? 'top-4 text-[10px] text-[#C8102E] uppercase tracking-[0.22em]' : 'top-6 text-[14px] text-gray-400'
+          <label htmlFor={id} className={`absolute left-0 pointer-events-none font-medium transition-all duration-300 ${isFocused || hasValue ? 'top-4 text-[10px] text-[#C8102E] uppercase tracking-[0.22em]' : 'top-6 text-[14px] text-gray-400'
             }`}>{label}</label>
           <textarea id={id} value={value} onChange={onChange}
             onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)}
             placeholder={isFocused ? placeholder : ''} rows={4}
-            className={`flex-1 bg-transparent border-none outline-none text-gray-900 font-bold resize-none pr-5 pb-4 transition-all duration-300 ${hasValue || isFocused ? 'pt-10' : 'pt-7'}`}
+            className={`flex-1 bg-transparent border-none outline-none text-gray-900 font-medium resize-none pr-5 pb-4 transition-all duration-300 ${hasValue || isFocused ? 'pt-10' : 'pt-7'}`}
           />
         </div>
       </div>
@@ -255,7 +271,7 @@ const PremiumCheckbox = ({ label, checked, onChange, icon: Icon }) => (
       {Icon && <Icon size={22} strokeWidth={checked ? 2.5 : 2} />}
     </div>
 
-    <span className={`text-sm font-black tracking-wide transition-colors duration-300 ${checked ? 'text-[#C8102E]' : 'text-gray-500 group-hover:text-gray-700'}`}>
+    <span className={`text-sm font-medium tracking-wide transition-colors duration-300 ${checked ? 'text-[#C8102E]' : 'text-gray-500 group-hover:text-gray-700'}`}>
       {label}
     </span>
 
@@ -322,7 +338,7 @@ const StepCircle = ({ step: s, current, onClick }) => {
       >
         {isPast ? <Check size={18} strokeWidth={3} /> : <s.icon size={18} strokeWidth={2.5} />}
       </motion.div>
-      <span className={`absolute -bottom-7 text-[9px] font-black uppercase tracking-[0.18em] whitespace-nowrap transition-colors duration-300 ${isActive ? 'text-[#C8102E]' : isPast ? 'text-gray-700' : 'text-gray-300 group-hover/step:text-red-300'
+      <span className={`absolute -bottom-7 text-[9px] font-bold uppercase tracking-[0.18em] whitespace-nowrap transition-colors duration-300 ${isActive ? 'text-[#C8102E]' : isPast ? 'text-gray-700' : 'text-gray-300 group-hover/step:text-red-300'
         }`}>{s.label}</span>
     </div>
   );
@@ -355,9 +371,9 @@ const AddProperty = () => {
     city: '', areaSociety: '',
     size: '', sizeUnit: '', beds: '', baths: '', condition: '', age: '',
     // Category Specific
-    floors: '', floorNumber: '', buildingName: '', isElevatorAvailable: 'No',
-    plotType: 'Residential', isCornerPlot: 'No', facing: '', roadWidth: '',
-    possessionStatus: 'Pending', furnished: 'No', washrooms: '', parking: '',
+    floors: '', floorNumber: '', buildingName: '', isElevatorAvailable: '',
+    plotType: '', subCategory: '', isCornerPlot: '', facing: '', roadWidth: '',
+    possessionStatus: '', furnished: '', washrooms: '', parking: '',
     amenities: [], features: [],
     phoneNumber: '', whatsappNumber: '',
   });
@@ -373,6 +389,7 @@ const AddProperty = () => {
 
   const [isVerified, setIsVerified] = useState(null);
   const [verStatus, setVerStatus] = useState('');
+  const [verifiedPhone, setVerifiedPhone] = useState('');
   const [propertyCount, setPropertyCount] = useState(0);
 
   useEffect(() => {
@@ -388,6 +405,11 @@ const AddProperty = () => {
         if (profile) {
           setVerStatus(profile.verificationStatus || 'unverified');
           setIsVerified(profile.verificationStatus === 'verified');
+          if (profile.verificationPhone) {
+            setVerifiedPhone(profile.verificationPhone);
+            // Pre-fill the phone number for convenience
+            setFormData(prev => ({ ...prev, phoneNumber: profile.verificationPhone }));
+          }
         } else { 
           setIsVerified(false); 
           setVerStatus('unverified'); 
@@ -542,6 +564,7 @@ const AddProperty = () => {
       if (formData.buildingName) fd.append('buildingName', formData.buildingName);
       if (formData.isElevatorAvailable) fd.append('isElevatorAvailable', formData.isElevatorAvailable);
       if (formData.plotType) fd.append('plotType', formData.plotType);
+      if (formData.subCategory) fd.append('subCategory', formData.subCategory);
       if (formData.isCornerPlot) fd.append('isCornerPlot', formData.isCornerPlot);
       if (formData.facing) fd.append('facing', formData.facing);
       if (formData.roadWidth) fd.append('roadWidth', formData.roadWidth);
@@ -729,7 +752,7 @@ const AddProperty = () => {
                   <StepHeader icon={Home} title="Basic Overview" sub="Establish the core identity of the property." />
                   <div className="space-y-5">
                     <PremiumInput label="Property Title" id="title" value={formData.title} onChange={update('title')} error={errors.title} placeholder="e.g. Modern Minimalist Villa" icon={Tag} />
-                    <PremiumInput label="Listing Price (PKR)" id="price" type="number" value={formData.price} onChange={update('price')} error={errors.price} placeholder="e.g. 15000000" icon={DollarSign} />
+                    <PremiumInput label="Listing Price (PKR)" id="price" type="text" value={formData.price} onChange={update('price')} error={errors.price} placeholder="e.g. 15000000" />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <PremiumSelect label="Market Purpose" id="purpose" value={formData.purpose} onChange={update('purpose')} options={[
                         { label: 'For Sale', value: 'Sale', icon: Tag },
@@ -780,11 +803,18 @@ const AddProperty = () => {
                         </div>
                         
                         <div className="grid grid-cols-2 gap-5">
-                          <PremiumSelect label="Furnished" id="furnished" value={formData.furnished} onChange={update('furnished')} options={['No', 'Yes']} icon={Check} />
-                          <PremiumSelect label="Newly Built" id="age" value={formData.age} onChange={update('age')} options={[
+                          <PremiumSelect label="Property Condition" id="condition" value={formData.condition} onChange={update('condition')} options={[
+                            { label: 'Excellent', value: 'Excellent', icon: Sparkles },
+                            { label: 'Good', value: 'Good', icon: Check },
+                            { label: 'Fair', value: 'Fair', icon: Info },
+                            { label: 'Needs Work', value: 'Needs Work', icon: AlertCircle },
+                          ]} error={errors.condition} icon={Shield} />
+                          <PremiumSelect label="Property Age" id="age" value={formData.age} onChange={update('age')} options={[
                             { label: 'Brand New', value: 'Newly Built', icon: Sparkles },
-                            { label: '1–5 Years', value: 'Old', icon: Layers },
-                          ]} error={errors.age} icon={Sparkles} />
+                            { label: '1–5 Years', value: '1-5 Years', icon: Layers },
+                            { label: '5–10 Years', value: '5-10 Years', icon: Layers },
+                            { label: '10+ Years', value: '10+ Years', icon: Clock },
+                          ]} error={errors.age} icon={History} />
                         </div>
 
                         {formData.propertyType === 'House' && (
@@ -798,6 +828,7 @@ const AddProperty = () => {
                           <div className="grid grid-cols-2 gap-5">
                             <PremiumInput label="Floor Number" id="floorNumber" value={formData.floorNumber} onChange={update('floorNumber')} placeholder="e.g. 5th" icon={Layers} />
                             <PremiumSelect label="Elevator" id="isElevatorAvailable" value={formData.isElevatorAvailable} onChange={update('isElevatorAvailable')} options={['No', 'Yes']} icon={Zap} />
+                            <PremiumSelect label="Furnished" id="furnished" value={formData.furnished} onChange={update('furnished')} options={['No', 'Yes']} icon={Check} />
                           </div>
                         )}
                         
@@ -816,9 +847,9 @@ const AddProperty = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-5">
                           <PremiumSelect label="Corner Plot" id="isCornerPlot" value={formData.isCornerPlot} onChange={update('isCornerPlot')} options={['No', 'Yes']} icon={Compass} />
-                          <PremiumInput label="Facing" id="facing" value={formData.facing} onChange={update('facing')} placeholder="e.g. North, Park" icon={Compass} />
+                          <PremiumSelect label="Facing" id="facing" value={formData.facing} onChange={update('facing')} options={['North', 'South', 'East', 'West', 'North-East', 'North-West', 'South-East', 'South-West', 'Park Facing', 'Main Road Facing']} icon={Compass} />
                         </div>
-                        <PremiumInput label="Road Width" id="roadWidth" value={formData.roadWidth} onChange={update('roadWidth')} placeholder="e.g. 40 ft" icon={Ruler} />
+                        <PremiumInput label="Road Width" id="roadWidth" value={formData.roadWidth} onChange={update('roadWidth')} placeholder="e.g. 40 ft" icon={Move} />
                       </motion.div>
                     )}
 
@@ -826,12 +857,12 @@ const AddProperty = () => {
                     {formData.propertyType === 'Commercial' && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-6">
                         <div className="grid grid-cols-2 gap-5">
-                          <PremiumSelect label="Property Sub-Type" id="plotType" value={formData.plotType} onChange={update('plotType')} options={['Shop', 'Office', 'Warehouse', 'Building', 'Factory']} icon={Building} />
-                          <PremiumSelect label="Washrooms" id="washrooms" value={formData.washrooms} onChange={update('washrooms')} options={['0', '1', '2', '3+']} error={errors.washrooms} icon={Bath} />
+                          <PremiumSelect label="Property Sub-Type" id="subCategory" value={formData.subCategory} onChange={update('subCategory')} options={['Shop', 'Office', 'Warehouse', 'Building', 'Factory', 'Hall']} icon={Building} />
+                          <PremiumSelect label="Washrooms" id="washrooms" value={formData.washrooms} onChange={update('washrooms')} options={['0', '1', '2', '3', '4', '5+']} error={errors.washrooms} icon={Bath} />
                         </div>
                         <div className="grid grid-cols-2 gap-5">
-                          <PremiumInput label="Floor" id="floors" value={formData.floors} onChange={update('floors')} placeholder="e.g. Ground" icon={Layers} />
-                          <PremiumSelect label="Parking Spaces" id="parking" value={formData.parking} onChange={update('parking')} options={['None', 'Public', 'Private (1-5)', 'Private (5+)']} icon={CheckCircle} />
+                          <PremiumInput label="Floor" id="floors" value={formData.floors} onChange={update('floors')} placeholder="e.g. Ground, 4th" icon={Layers} />
+                          <PremiumSelect label="Parking Spaces" id="parking" value={formData.parking} onChange={update('parking')} options={['None', 'Public', 'Private (1-5)', 'Private (5+)', 'Dedicated']} icon={CheckCircle} />
                         </div>
                       </motion.div>
                     )}
@@ -872,7 +903,17 @@ const AddProperty = () => {
                 <motion.div key="s6" custom={dir} variants={slideVariants} initial="enter" animate="center" exit="exit" className="space-y-8">
                   <StepHeader icon={Phone} title="Communication Links" sub="Provide direct access lines for buyer inquiries." />
                   <div className="space-y-5">
-                    <PremiumInput label="Phone (03XXXXXXXXX)" id="phoneNumber" type="tel" value={formData.phoneNumber} onChange={update('phoneNumber')} error={errors.phoneNumber} placeholder="03001234567" icon={Phone} />
+                    <PremiumInput 
+                      label="Phone (03XXXXXXXXX)" 
+                      id="phoneNumber" 
+                      type="tel" 
+                      value={formData.phoneNumber} 
+                      onChange={update('phoneNumber')} 
+                      error={errors.phoneNumber} 
+                      placeholder="03001234567" 
+                      icon={Phone} 
+                      helper={isVerified ? `Must match your verified number: ${verifiedPhone}` : ""}
+                    />
                     <PremiumInput label="WhatsApp (Optional)" id="whatsappNumber" type="tel" value={formData.whatsappNumber} onChange={update('whatsappNumber')} error={errors.whatsappNumber} placeholder="03001234567" icon={MessageCircle} />
                   </div>
                 </motion.div>
@@ -1051,8 +1092,8 @@ const AddProperty = () => {
                         { label: 'Area', val: formData.size ? `${formData.size} ${formData.sizeUnit}` : '—' },
                       ].map(({ label, val }) => (
                         <div key={label} className="p-4 text-center" style={{ borderRight: '1px solid rgba(200,16,46,0.06)' }}>
-                          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-gray-400 mb-1">{label}</p>
-                          <p className="text-sm font-black text-gray-900">{val}</p>
+                          <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-gray-400 mb-1">{label}</p>
+                          <p className="text-sm font-medium text-gray-900">{val}</p>
                         </div>
                       ))}
                     </div>
@@ -1068,12 +1109,12 @@ const AddProperty = () => {
             {/* Back / Cancel */}
             {step > 1 ? (
               <button onClick={prevStep} disabled={loading}
-                className="flex items-center gap-2 font-black text-gray-400 hover:text-[#C8102E] transition-all duration-300 text-[12px] uppercase tracking-widest disabled:opacity-40 group px-5 py-3 rounded-[16px] hover:bg-red-50">
+                className="flex items-center gap-2 font-bold text-gray-400 hover:text-[#C8102E] transition-all duration-300 text-[12px] uppercase tracking-widest disabled:opacity-40 group px-5 py-3 rounded-[16px] hover:bg-red-50">
                 <ArrowLeft size={17} className="group-hover:-translate-x-1 transition-transform duration-300" strokeWidth={2.5} /> Back
               </button>
             ) : (
               <button onClick={() => navigate(-1)}
-                className="font-black text-gray-300 hover:text-[#C8102E] transition-colors duration-300 text-[11px] uppercase tracking-[0.22em] px-5 py-3">
+                className="font-bold text-gray-300 hover:text-[#C8102E] transition-colors duration-300 text-[11px] uppercase tracking-[0.22em] px-5 py-3">
                 Cancel
               </button>
             )}
@@ -1084,7 +1125,7 @@ const AddProperty = () => {
               disabled={loading}
               whileHover={!loading ? { scale: 1.04, y: -2 } : {}}
               whileTap={!loading ? { scale: 0.97 } : {}}
-              className={`relative flex items-center gap-3 px-10 py-4 rounded-[20px] text-[13px] font-black uppercase tracking-[0.18em] text-white transition-all duration-400 overflow-hidden ${loading ? 'opacity-60 cursor-not-allowed' : ''
+              className={`relative flex items-center gap-3 px-10 py-4 rounded-[20px] text-[13px] font-bold uppercase tracking-[0.18em] text-white transition-all duration-400 overflow-hidden ${loading ? 'opacity-60 cursor-not-allowed' : ''
                 }`}
               style={!loading ? {
                 background: propertyCount >= 3 ? '#1A0008' : 'linear-gradient(135deg, #C8102E 0%, #FF3355 100%)',

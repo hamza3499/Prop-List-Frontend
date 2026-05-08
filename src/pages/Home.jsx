@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValue, useMotionTemplate } from 'framer-motion';
 import { Search, MapPin, ArrowRight, X, Sparkles, ChevronDown, Star, Shield, Zap, TrendingUp, Home as HomeIcon, Building2, Eye, Heart } from 'lucide-react';
@@ -20,9 +20,11 @@ const MagneticButton = ({ children, className, onClick }) => {
     y.set((e.clientY - cy) * 0.35);
   };
   const reset = () => { x.set(0); y.set(0); };
+  const springX = useSpring(x, { stiffness: 200, damping: 15 });
+  const springY = useSpring(y, { stiffness: 200, damping: 15 });
   return (
     <motion.div ref={ref} onMouseMove={handleMouse} onMouseLeave={reset}
-      style={{ x: useSpring(x, { stiffness: 200, damping: 15 }), y: useSpring(y, { stiffness: 200, damping: 15 }) }}
+      style={{ x: springX, y: springY }}
       className={className} onClick={onClick}>
       {children}
     </motion.div>
@@ -30,7 +32,7 @@ const MagneticButton = ({ children, className, onClick }) => {
 };
 
 // ─── Floating Orb ────────────────────────────────────────────────────────────
-const FloatingOrb = React.memo(({ size, color, x, y, duration, delay }) => (
+const FloatingOrb = memo(({ size, color, x, y, duration, delay }) => (
   <div
     className="absolute rounded-full pointer-events-none opacity-20"
     style={{ 
@@ -75,7 +77,7 @@ const toggleFavorite = (id) => {
 };
 
 // ─── Property Card ───────────────────────────────────────────────────────────
-const PropertyCard = React.memo(({ property, index }) => {
+const PropertyCard = memo(({ property, index }) => {
   const navigate = useNavigate();
   const propId = property._id || property.id;
   const [hovered, setHovered] = useState(false);
@@ -91,6 +93,32 @@ const PropertyCard = React.memo(({ property, index }) => {
     navigate(`/property/${propId}`);
   };
 
+  const type = property.propertyType?.toLowerCase() || '';
+  const isPlot = type.includes('plot') || type.includes('land');
+  const isCommercial = type.includes('commercial') || type.includes('shop') || type.includes('office') || type.includes('building');
+
+  // Dynamic metrics based on category
+  let metrics = [];
+  if (isPlot) {
+    metrics = [
+      { label: 'Area', val: property.sqft },
+      { label: 'Facing', val: property.facing || 'East' },
+      { label: 'Status', val: property.possessionStatus || 'Ready' }
+    ];
+  } else if (isCommercial) {
+    metrics = [
+      { label: 'Area', val: property.sqft || '—' },
+      { label: 'Type', val: property.subCategory || property.propertyType?.split(' ')[0] || 'Office' },
+      { label: 'Parking', val: property.parking || 'Yes' }
+    ];
+  } else {
+    metrics = [
+      { label: 'Beds', val: property.beds || '—' },
+      { label: 'Baths', val: property.baths || '—' },
+      { label: 'Area', val: property.sqft || '—' }
+    ];
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 60 }}
@@ -99,7 +127,7 @@ const PropertyCard = React.memo(({ property, index }) => {
       transition={{ duration: 0.7, delay: index * 0.1, ease: [0.16, 1, 0.3, 1] }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className="group relative bg-white dark:bg-[#0d0d0d] rounded-[32px] overflow-hidden border border-gray-100/80 dark:border-white/5 shadow-sm hover:shadow-2xl hover:shadow-red-500/10 transition-all duration-700 hover:-translate-y-2"
+      className="group relative bg-white dark:bg-[#0c0c0c] rounded-[32px] overflow-hidden border border-red-100 dark:border-red-500/20 shadow-sm hover:border-red-500/40 hover:shadow-2xl hover:shadow-red-500/10 transition-all duration-700 hover:-translate-y-2"
     >
       {/* Image */}
       <div className="relative aspect-[16/10] overflow-hidden cursor-pointer" onClick={handleViewProperty}>
@@ -119,11 +147,9 @@ const PropertyCard = React.memo(({ property, index }) => {
           <span className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-red-500 text-white shadow-lg shadow-red-500/30">
             {property.purpose || 'Sale'}
           </span>
-          {index === 0 && (
-            <span className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-400 text-black shadow-lg">
-              ✦ Featured
-            </span>
-          )}
+          <span className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/20 backdrop-blur-md text-white border border-white/20">
+            {property.propertyType}
+          </span>
         </div>
 
         {/* Like */}
@@ -148,14 +174,11 @@ const PropertyCard = React.memo(({ property, index }) => {
           </p>
         </div>
 
+        {/* Dynamic Metrics */}
         <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: 'Beds', val: property.beds },
-            { label: 'Baths', val: property.baths },
-            { label: 'Area', val: property.sqft },
-          ].map(({ label, val }) => (
-            <div key={label} className="bg-gray-50 dark:bg-white/5 rounded-2xl py-3 px-2 text-center">
-              <p className="text-[13px] font-black text-gray-900 dark:text-white">{val}</p>
+          {metrics.map(({ label, val }) => (
+            <div key={label} className="bg-gray-50 dark:bg-white/5 rounded-2xl py-3 px-2 text-center border border-transparent hover:border-red-100 transition-colors group/stat">
+              <p className="text-[13px] font-black text-gray-900 dark:text-white group-hover/stat:text-red-600 transition-colors truncate">{val}</p>
               <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold mt-0.5">{label}</p>
             </div>
           ))}
@@ -174,7 +197,7 @@ const PropertyCard = React.memo(({ property, index }) => {
 });
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
-const PropertySkeleton = React.memo(() => (
+const PropertySkeleton = memo(() => (
   <div className="bg-white dark:bg-[#0d0d0d] rounded-[32px] overflow-hidden border border-gray-100 dark:border-white/5 animate-pulse">
     <div className="aspect-[16/10] bg-gray-100 dark:bg-zinc-800" />
     <div className="p-6 space-y-4">
@@ -202,30 +225,41 @@ const Home = () => {
   const [properties, setProperties] = useState([]);
   const [totalMatches, setTotalMatches] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
+  
+  // Persist pagination state
+  const [currentPage, setCurrentPage] = useState(() => {
+    return parseInt(sessionStorage.getItem('homePage') || '1', 10);
+  });
   const [totalPages, setTotalPages] = useState(1);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  // Update session storage when page changes
+  useEffect(() => {
+    sessionStorage.setItem('homePage', currentPage);
+  }, [currentPage]);
 
   const { scrollY } = useScroll();
   const heroY = useTransform(scrollY, [0, 600], [0, 200]);
   const heroOpacity = useTransform(scrollY, [0, 500], [1, 0]);
   const heroScale = useTransform(scrollY, [0, 600], [1, 1.12]);
 
-  // Mouse parallax (throttled)
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  const smoothMouseX = useSpring(mouseX, { stiffness: 50, damping: 20 });
+  const smoothMouseY = useSpring(mouseY, { stiffness: 50, damping: 20 });
+
+  const mouseBgX = useTransform(smoothMouseX, x => 50 + x * 30);
+  const mouseBgY = useTransform(smoothMouseY, y => 50 + y * 30);
+  const mouseBackground = useMotionTemplate`radial-gradient(600px circle at ${mouseBgX}% ${mouseBgY}%, rgba(220,38,38,0.12), transparent 60%)`;
+
+  // Mouse parallax
   useEffect(() => {
-    let ticking = false;
     const handleMouse = (e) => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          setMousePos({ x: e.clientX / window.innerWidth - 0.5, y: e.clientY / window.innerHeight - 0.5 });
-          ticking = false;
-        });
-        ticking = true;
-      }
+      mouseX.set(e.clientX / window.innerWidth - 0.5);
+      mouseY.set(e.clientY / window.innerHeight - 0.5);
     };
     window.addEventListener('mousemove', handleMouse, { passive: true });
     return () => window.removeEventListener('mousemove', handleMouse);
-  }, []);
+  }, [mouseX, mouseY]);
 
   // Particle canvas
   useEffect(() => {
@@ -254,7 +288,6 @@ const Home = () => {
         ctx.fillStyle = `rgba(220,38,38,${p.alpha})`;
         ctx.fill();
       });
-      // Throttle particle rendering to ~30fps to save GPU/CPU massively
       setTimeout(() => {
         raf = requestAnimationFrame(draw);
       }, 33);
@@ -270,19 +303,23 @@ const Home = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const responseData = await getProperties({ ...apiFilters, page: currentPage, limit: 3 });
+        const responseData = await getProperties({ ...apiFilters, page: currentPage, limit: 9, sort: 'newest' });
         const data = responseData.properties || (Array.isArray(responseData) ? responseData : []);
+        
+        // Ensure frontend sort as safety
+        const sortedData = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        
         const totalCount = responseData.total || data.length;
-        const pagesCount = responseData.pages || Math.ceil(totalCount / 3) || 1;
-        const formatted = data.map(p => ({
+        const pagesCount = responseData.pages || Math.ceil(totalCount / 9) || 1;
+        
+        const formatted = sortedData.map(p => ({
           ...p,
-          location: p.city || p.location || 'Location missing',
+          location: p.areaSociety || p.city || p.location || 'Location missing',
           image: resolveImageUrl(p.images?.[0] || p.image),
-          beds: p.beds || 'N/A',
-          baths: p.baths || 'N/A',
-          sqft: p.size ? `${p.size} ${p.sizeUnit || ''}`.trim() : (p.sqft || 'N/A'),
+          sqft: p.size ? `${p.size} ${p.sizeUnit || ''}`.trim() : (p.sqft || '—'),
           price: String(p.price).startsWith('PKR') ? p.price : `PKR ${Number(p.price).toLocaleString()}`
         }));
+        
         if (isMounted) {
           setProperties(formatted);
           setTotalMatches(totalCount);
@@ -355,11 +392,9 @@ const Home = () => {
         </div>
 
         {/* Mouse-tracked gradient */}
-        <div
-          className="absolute inset-0 z-5 pointer-events-none transition-all duration-300"
-          style={{
-            background: `radial-gradient(600px circle at ${50 + mousePos.x * 30}% ${50 + mousePos.y * 30}%, rgba(220,38,38,0.12), transparent 60%)`
-          }}
+        <motion.div
+          className="absolute inset-0 z-5 pointer-events-none"
+          style={{ background: mouseBackground }}
         />
 
         {/* Hero Content */}
@@ -530,12 +565,12 @@ const Home = () => {
 
         {/* Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
             {[1, 2, 3].map(i => <PropertySkeleton key={i} />)}
           </div>
         ) : properties.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
               {properties.map((prop, index) => (
                 <PropertyCard key={prop._id || prop.id || index} property={prop} index={index} />
               ))}

@@ -10,7 +10,8 @@ const Signup = lazy(() => import('./pages/Signup'));
 const AddProperty = lazy(() => import('./pages/AddProperty'));
 const Profile = lazy(() => import('./pages/Profile'));
 const Favorites = lazy(() => import('./pages/Favorites'));
-const PropertyDetail = lazy(() => import('./pages/PropertyDetail'));
+import PropertyDetail from './pages/PropertyDetail';
+const OurStory = lazy(() => import('./pages/OurStory'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 
 // Extremely lightweight fallback UI during chunk loading
@@ -32,6 +33,8 @@ function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/property/:id" element={<PropertyDetail />} />
             <Route path="/favorites" element={<Favorites />} />
+            <Route path="/about" element={<OurStory />} />
+            <Route path="/our-story" element={<OurStory />} />
 
             {/* Protected Routes */}
             <Route 

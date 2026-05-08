@@ -35,10 +35,10 @@ const PremiumFooter = () => {
       { label: 'Our Story', path: '/about' },
     ],
     categories: [
-      { label: 'Modern Houses', path: 'https://www.architecturaldigest.com/architecture', external: true },
-      { label: 'Luxury Apartments', path: 'https://www.sothebysrealty.com', external: true },
-      { label: 'Commercial Space', path: 'https://www.loopnet.com', external: true },
-      { label: 'Plots & Land', path: 'https://www.landwatch.com', external: true },
+      { label: 'Modern Houses', path: 'https://www.archdaily.com', external: true },
+      { label: 'Luxury Apartments', path: 'https://www.jamesedition.com/real_estate', external: true },
+      { label: 'Commercial Space', path: 'https://www.cbre.com/properties', external: true },
+      { label: 'Plots & Land', path: 'https://www.christiesrealestate.com', external: true },
     ],
     legal: [
       { label: 'Privacy Policy', path: '/privacy' },
@@ -84,7 +84,10 @@ const PremiumFooter = () => {
                   placeholder="name@domain.com"
                   className="w-full px-6 py-4 rounded-[20px] bg-white/[0.03] border border-white/10 outline-none text-sm text-white placeholder:text-white/20 focus:border-primary/60 focus:bg-white/[0.07] focus:shadow-[0_0_25px_-5px_rgba(255,43,43,0.15)] transition-all duration-500"
                 />
-                <button className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 bg-white text-[#0B1120] rounded-[14px] flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-300 shadow-xl active:scale-95">
+                <button 
+                  onClick={() => window.open('https://wa.me/923128523144', '_blank')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 bg-white text-[#0B1120] rounded-[14px] flex items-center justify-center hover:bg-primary hover:text-white transition-all duration-300 shadow-xl active:scale-95"
+                >
                   <Send size={18} />
                 </button>
               </div>

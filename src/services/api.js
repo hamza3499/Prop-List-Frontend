@@ -1,4 +1,4 @@
-export const API_URL = 'http://localhost:5001';
+export const API_URL = `http://${window.location.hostname}:5001`;
 
 export const resolveImageUrl = (path) => {
   if (!path) return '';

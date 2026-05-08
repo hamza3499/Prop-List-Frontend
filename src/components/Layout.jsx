@@ -9,17 +9,6 @@ const Layout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // ─── 1. Redirect to Home on Refresh ───
-  React.useEffect(() => {
-    // Detect browser refresh using modern performance API
-    const [navigationEntry] = performance.getEntriesByType('navigation');
-    if (navigationEntry && navigationEntry.type === 'reload') {
-       if (location && location.pathname !== '/') {
-         navigate('/');
-       }
-    }
-  }, []); // Only on mount
-
   // ─── 2. Scroll to Top on Page Switch ───
   React.useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -27,7 +16,7 @@ const Layout = ({ children }) => {
 
   // ─── 3. Inactivity Logout (30 seconds) ───
   React.useEffect(() => {
-    const INACTIVITY_LIMIT = 30 * 1000; // 30 seconds
+    const INACTIVITY_LIMIT = 5 * 60 * 1000; // 5 minutes
     let timeoutId;
     let debounceId;
 
